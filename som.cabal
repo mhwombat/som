@@ -1,0 +1,50 @@
+name:           som
+version:        1.0
+synopsis:       Self-Organising Maps
+description:    A Kohonen Self-organising Map (SOM) maps input patterns 
+                onto a regular grid (usually two-dimensional) where each
+                node in the grid is a model of the input data, and does
+                so using a method which ensures that any topological
+                relationships within the input data are also represented
+                in the grid. This implementation supports the use of 
+                non-numeric patterns.
+                .
+                In layman's terms, a SOM can be useful when you you want
+                to discover the underlying structure of some data.
+category:       Math
+cabal-version:  >=1.8
+build-type:     Simple
+author:         Amy de Buitléir
+copyright:      (c) Amy de Buitléir 2010-2012
+license:        BSD3
+stability:      experimental
+maintainer:     amy@nualeargais.ie
+license-file:   LICENSE
+
+library
+  hs-source-dirs:  src
+  build-depends:   base ==4.*,
+                   base-unicode-symbols ==0.2.*,
+                   binary == 0.5.*,
+                   containers ==0.4.2.*,
+                   grid ==1.1.* || ==2.0,
+                   MonadRandom ==0.1.*
+  ghc-options:     -Wall -rtsopts
+  exposed-modules: Data.Datamining.Clustering.SOM,
+                   Data.Datamining.Clustering.SOMInternal
+
+test-suite som-tests
+  type:            exitcode-stdio-1.0
+  build-depends:   base ==4.*,
+                   test-framework-quickcheck2 == 0.2.*,
+                   QuickCheck == 2.4.*,
+                   test-framework == 0.*,
+                   som,
+                   grid ==1.1.* || ==2.0,
+                   base-unicode-symbols ==0.2.*,
+                   MonadRandom ==0.1.*,
+                   random ==1.0.*
+  hs-source-dirs:  test
+  ghc-options:     -Wall -rtsopts
+  main-is:         Main.hs
+

@@ -16,7 +16,7 @@
    version="1.1"
    inkscape:version="0.48.3.1 r9886"
    sodipodi:docname="somTutorial.svg"
-   inkscape:export-filename="/home/amy/nosync/src/grid/userguide/images/hexHexGrid.png"
+   inkscape:export-filename="/home/amy/nosync/src/som/examples/somTutorial.png"
    inkscape:export-xdpi="70"
    inkscape:export-ydpi="70">
   <defs
@@ -80,7 +80,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>

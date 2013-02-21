@@ -8,7 +8,8 @@ colour distribution of the image. The map here is a hexagonal grid with 7
 tiles in it, so it divides the colours into 7 clusters. The value associated
 with each tile is the RGB value of the colour for that cluster.
 
-The picture at XXXXX will make this clearer.
+The picture at <https://github.com/mhwombat/som/blob/master/examples/somTutorial.png?raw=true> 
+will make this clearer.
 -}
 
 import Data.Datamining.Clustering.SOM (adjustVector, euclideanDistanceSquared,
@@ -32,7 +33,7 @@ main = do
   -- Initialise the image library
   ilInit
   -- Read the image
-  img <- readImage "Sample.png"
+  img <- readImage "SampleTiny.png"
   -- Convert the image data to vectors and shuffle them. (If we didn't shuffle
   -- them, the colours at the bottom right of the image would take precedence
   -- over those at the top left.)

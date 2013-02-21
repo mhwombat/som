@@ -1,3 +1,15 @@
+------------------------------------------------------------------------
+-- |
+-- Module      :  Data.Datamining.Clustering.SOMQC
+-- Copyright   :  (c) Amy de Buitléir 2012-2013
+-- License     :  BSD-style
+-- Maintainer  :  amy@nualeargais.ie
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Tests
+--
+------------------------------------------------------------------------
 {-# LANGUAGE UnicodeSyntax, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults -fno-warn-orphans #-}
 
@@ -17,8 +29,8 @@ import Math.Geometry.Grid (Grid, HexHexGrid, hexHexGrid, tileCount)
 import Math.Geometry.GridMap ((!), lazyGridMap, GridMap, elems)
 import Test.Framework as TF (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose, Property, 
-  property, sized, vector, vectorOf)
+import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose, 
+  Property, property, sized, vector, vectorOf)
 
 newtype UnitInterval = FromDouble Double deriving Show
 
@@ -35,17 +47,20 @@ data TwoVectorsSameLength = TwoVectorsSameLength [Double] [Double]
   deriving Show
 
 sizedTwoVectorsSameLength ∷ Int → Gen TwoVectorsSameLength
-sizedTwoVectorsSameLength n = TwoVectorsSameLength <$> vector n <*> vector n
+sizedTwoVectorsSameLength n = 
+  TwoVectorsSameLength <$> vector n <*> vector n
 
 instance Arbitrary TwoVectorsSameLength where
   arbitrary = sized sizedTwoVectorsSameLength
 
-prop_adjustVector_zero_doesnt_change_input ∷ TwoVectorsSameLength → Property
-prop_adjustVector_zero_doesnt_change_input (TwoVectorsSameLength xs ys) = 
+prop_zero_adjustment_is_no_adjustment ∷ 
+  TwoVectorsSameLength → Property
+prop_zero_adjustment_is_no_adjustment (TwoVectorsSameLength xs ys) = 
   property $ adjustVector xs 0 ys ≡ ys
 
-prop_adjustVector_one_gives_perfect_match ∷ TwoVectorsSameLength → Property
-prop_adjustVector_one_gives_perfect_match (TwoVectorsSameLength xs ys) = 
+prop_full_adjustment_gives_perfect_match ∷ 
+  TwoVectorsSameLength → Property
+prop_full_adjustment_gives_perfect_match (TwoVectorsSameLength xs ys) = 
   property $ adjustVector xs 1 ys ≡ xs
 
 prop_adjustVector_improves_similarity ∷ 
@@ -65,14 +80,14 @@ data ClassifierAndTargets = ClassifierAndTargets
   (GridMap HexHexGrid (Int,Int) Double) [Double] 
     deriving Show
 
--- | Generate a classifier and a training set. The training set will consist
---   @j@ vectors of equal length, where @j@ is the number of patterns the
---   classifier can model. After running through the training set a few times,
---   the classifier should be very accurate at identifying any of those @j@
---   vectors.
+-- | Generate a classifier and a training set. The training set will 
+--   consist @j@ vectors of equal length, where @j@ is the number of 
+--   patterns the classifier can model. After running through the 
+--   training set a few times, the classifier should be very accurate at
+--   identifying any of those @j@ vectors.
 sizedClassifierAndTargets ∷ Int → Gen ClassifierAndTargets
 sizedClassifierAndTargets n = do
-  sideLength ← choose (1, min (n+1) 5) --don't want the test to take too long
+  sideLength ← choose (1, min (n+1) 5) --avoid long tests
   let g = hexHexGrid sideLength
   let numberOfPatterns = tileCount g
   ps ← vectorOf numberOfPatterns arbitrary
@@ -93,12 +108,12 @@ fractionDiff xs ys = if denom ≡ 0 then 0 else d / denom
 approxEqual ∷ (Floating a, Ord a) ⇒ [a] → [a] → Bool
 approxEqual xs ys = fractionDiff xs ys ≤ 0.1
 
--- | If we use a fixed learning rate of one (regardless of the distance from
---   the BMU), and train a classifier once on one pattern, then all nodes
---   should match the input vector.
+-- | If we use a fixed learning rate of one (regardless of the distance
+--   from the BMU), and train a classifier once on one pattern, then all
+--   nodes should match the input vector.
 prop_global_instant_training_works ∷ ClassifierAndTargets → Property
-prop_global_instant_training_works (ClassifierAndTargets c xs) = property $
-  elems c' `approxEqual` replicate (tileCount c) x
+prop_global_instant_training_works (ClassifierAndTargets c xs) = 
+  property $ elems c' `approxEqual` replicate (tileCount c) x
     where x = head xs
           c' = train (\_ → 1.0) c x
 
@@ -110,9 +125,25 @@ prop_training_works (ClassifierAndTargets c xs) = errBefore ≠ 0 ==>
           errBefore = abs (x - c ! bmu)
           errAfter = abs (x - c' ! bmu)
 
--- | The training set consists of the same vectors in the same order, several
---   times over. So the resulting classifications should consist of the same
---   integers in the same order, over and over.
+--   Invoking @diffAndTrain f c p@ should give identical results to
+--   @(p `classify` c, train f c p)@.
+prop_classifyAndTrainEquiv ∷ ClassifierAndTargets → Property
+prop_classifyAndTrainEquiv (ClassifierAndTargets c ps) = property $
+  classifyAndTrain f c p ≡ (c `classify` p, train f c p)
+    where f = (gaussian 0.5 0.8)
+          p = head ps
+
+--   Invoking @diffAndTrain f c p@ should give identical results to
+--   @(c `diffs` p, train f c p)@.
+prop_diffAndTrainEquiv ∷ ClassifierAndTargets → Property
+prop_diffAndTrainEquiv (ClassifierAndTargets c ps) = property $
+  diffAndTrain f c p ≡ (c `diffs` p, train f c p)
+    where f = (gaussian 0.5 0.8)
+          p = head ps
+
+-- | The training set consists of the same vectors in the same order, 
+--   several times over. So the resulting classifications should consist
+--   of the same integers in the same order, over and over.
 prop_batch_training_works ∷ ClassifierAndTargets → Property
 prop_batch_training_works (ClassifierAndTargets c xs) = property $
   classifications ≡ (concat . replicate 5) firstSet 
@@ -122,14 +153,14 @@ prop_batch_training_works (ClassifierAndTargets c xs) = property $
         firstSet = take (length xs) classifications
 
 -- | If we train a classifier once on a set of patterns, where the 
---   number of patterns in the set is equal to the number of nodes in the 
---   classifier, then the classifier should become a better representation of
---   the training set. The training set is designed to reduce the possibility
---   that a single node will train to more than one pattern, rendering the
---   test invalid.
+--   number of patterns in the set is equal to the number of nodes in
+--   the classifier, then the classifier should become a better 
+--   representation of the training set. The training set is designed to
+--   reduce the possibility that a single node will train to more than
+--   one pattern, rendering the test invalid.
 prop_batch_training_works2 ∷ ClassifierAndTargets → Property
-prop_batch_training_works2 (ClassifierAndTargets c _) = errBefore ≠ 0 ==>
-  errAfter < errBefore
+prop_batch_training_works2 (ClassifierAndTargets c _) = 
+  errBefore ≠ 0 ==> errAfter < errBefore
     where c' = trainBatch (gaussian 0.5 0.8) c xs
           xs = take (tileCount c) [0,100..]
           errBefore = euclideanDistanceSquared (sort xs) (sort (elems c))
@@ -140,18 +171,19 @@ test = testGroup "QuickCheck Data.Datamining.Clustering.SOMQC"
   [
     testProperty "prop_adjustVector_doesnt_choke_on_infinite_lists"
       prop_adjustVector_doesnt_choke_on_infinite_lists,
-    testProperty "prop_adjustVector_zero_doesnt_change_input"
-      prop_adjustVector_zero_doesnt_change_input,
-    testProperty "prop_adjustVector_one_gives_perfect_match"
-      prop_adjustVector_one_gives_perfect_match,
+    testProperty "prop_zero_adjustment_is_no_adjustment"
+      prop_zero_adjustment_is_no_adjustment,
+    testProperty "prop_full_adjustment_gives_perfect_match"
+      prop_full_adjustment_gives_perfect_match,
     testProperty "prop_adjustVector_improves_similarity"
       prop_adjustVector_improves_similarity,
     testProperty "prop_global_instant_training_works"
       prop_global_instant_training_works,
-    testProperty "prop_training_works"
-      prop_training_works,
-    testProperty "prop_batch_training_works"
-      prop_batch_training_works,
+    testProperty "prop_training_works" prop_training_works,
+    testProperty "prop_classifyAndTrainEquiv"
+      prop_classifyAndTrainEquiv,
+    testProperty "prop_diffAndTrainEquiv" prop_diffAndTrainEquiv,
+    testProperty "prop_batch_training_works" prop_batch_training_works,
     testProperty "prop_batch_training_works2"
       prop_batch_training_works2
   ]

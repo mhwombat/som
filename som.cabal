@@ -1,5 +1,5 @@
 name:           som
-version:        1.0
+version:        4.0
 synopsis:       Self-Organising Maps
 description:    A Kohonen Self-organising Map (SOM) maps input patterns 
                 onto a regular grid (usually two-dimensional) where each
@@ -11,7 +11,11 @@ description:    A Kohonen Self-organising Map (SOM) maps input patterns
                 .
                 In layman's terms, a SOM can be useful when you you want
                 to discover the underlying structure of some data.
+                .
+                The userguide is available at 
+                <https://github.com/mhwombat/som/wiki>.
 category:       Math
+
 cabal-version:  >=1.8
 build-type:     Simple
 author:         Amy de Buitléir
@@ -25,26 +29,28 @@ library
   hs-source-dirs:  src
   build-depends:   base ==4.*,
                    base-unicode-symbols ==0.2.*,
-                   binary == 0.5.*,
-                   containers ==0.4.2.*,
-                   grid ==1.1.* || ==2.0,
+                   binary == 0.5.* || == 0.6.* || == 0.7.*,
+                   containers ==0.4.2.* || ==0.5.*,
+                   grid ==4.*,
                    MonadRandom ==0.1.*
-  ghc-options:     -Wall -rtsopts
+  ghc-options:     -Wall
   exposed-modules: Data.Datamining.Clustering.SOM,
-                   Data.Datamining.Clustering.SOMInternal
+                   Data.Datamining.Clustering.SOMInternal,
+                   Data.Datamining.Clustering.Classifier,
+                   Data.Datamining.Pattern
 
 test-suite som-tests
   type:            exitcode-stdio-1.0
   build-depends:   base ==4.*,
-                   test-framework-quickcheck2 == 0.2.*,
-                   QuickCheck == 2.4.*,
-                   test-framework == 0.*,
+                   test-framework-quickcheck2 == 0.3.*,
+                   QuickCheck ==2.5.* || ==2.6.*,
+                   test-framework == 0.8.*,
                    som,
-                   grid ==1.1.* || ==2.0,
+                   grid ==4.*,
                    base-unicode-symbols ==0.2.*,
                    MonadRandom ==0.1.*,
                    random ==1.0.*
   hs-source-dirs:  test
-  ghc-options:     -Wall -rtsopts
+  ghc-options:     -Wall
   main-is:         Main.hs
 

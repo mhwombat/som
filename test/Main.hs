@@ -1,6 +1,7 @@
 {-# LANGUAGE UnicodeSyntax #-}
 module Main where
 
+import Data.Datamining.PatternQC ( test )
 import Data.Datamining.Clustering.SOMQC ( test )
 
 import Test.Framework as TF ( defaultMain, Test )
@@ -8,6 +9,7 @@ import Test.Framework as TF ( defaultMain, Test )
 tests ∷ [TF.Test]
 tests = 
   [ 
+    Data.Datamining.PatternQC.test,
     Data.Datamining.Clustering.SOMQC.test
   ]
 

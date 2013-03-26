@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies, FlexibleInstances, FlexibleContexts #-}
 
 {-
 
@@ -12,52 +12,67 @@ The picture at <https://github.com/mhwombat/som/blob/master/examples/somTutorial
 will make this clearer.
 -}
 
-import Data.Datamining.Clustering.SOM (adjustVector, euclideanDistanceSquared,
-  gaussian, normalise, Pattern(..), trainBatch)
-import Data.Ix (Ix)
-import Codec.Image.DevIL (ilInit, readImage, writeImage)
-import Control.Monad (forM_)
+import Codec.Image.DevIL (ilInit, readImage)
+import Control.Monad (forM_, unless, replicateM)
 import Control.Monad.Random (evalRandIO, Rand, RandomGen, getRandomRs)
+import Data.Datamining.Pattern (adjustVector, 
+  euclideanDistanceSquared, Pattern(..))
+import Data.Datamining.Clustering.SOM (SOM, defaultSOM, toGridMap)
+import Data.Datamining.Clustering.Classifier (Classifier, train, trainBatch)
 import Data.List (foldl')
 import Data.Word (Word8)
 import Data.Array.IArray (elems)
 import Data.Array.Unboxed (UArray)
 import Data.Array.ST (runSTArray)
 import GHC.Arr (listArray, readSTArray, thawSTArray, writeSTArray)
-import Math.Geometry.Grid (Grid, HexHexGrid, hexHexGrid)
-import qualified Math.Geometry.GridMap as GM (lazyGridMap, map, GridMap, 
-  elems, toList)
+import Math.Geometry.Grid (HexHexGrid, Index, hexHexGrid)
+import qualified Math.Geometry.GridMap as GM (GridMap, BaseGrid, map,
+  toList)
+import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
 import Numeric (showHex)
+import System.Directory (doesFileExist)
 
+-- These imports are for the graphics
+import Data.Colour.SRGB (sRGB)
+import Diagrams.Prelude
+import Diagrams.Backend.SVG
+import qualified Data.ByteString.Lazy as BS
+import Text.Blaze.Svg.Renderer.Utf8 (renderSvg)
+import Text.Blaze.Svg.Internal (Svg)
+import Diagrams.TwoD.Text (Text)
+
+inputFile :: FilePath
+inputFile = "Sample.png"
+
+main :: IO ()
 main = do
   -- Initialise the image library
   ilInit
   -- Read the image
-  img <- readImage "SampleTiny.png"
+  fileExists <- doesFileExist inputFile
+  unless fileExists $ error ("Can't find file: " ++ inputFile)
+  img <- readImage inputFile
   -- Convert the image data to vectors and shuffle them. (If we didn't shuffle
   -- them, the colours at the bottom right of the image would take precedence
   -- over those at the top left.)
   xs <- evalRandIO $ shuffle $ img2vectors img
   -- Build a self-organising map (SOM) initialised with small random values.
-  c <- evalRandIO buildSOM
+  c <- evalRandIO $ buildSOM (length xs)
   -- Train it with the vectors from the image.
-  let c2 = trainBatch (gaussian 1.0 1.0) c xs
-  let c3 = trainBatch (gaussian 0.9 0.9) c2 xs
-  let c4 = trainBatch (gaussian 0.8 0.8) c3 xs
-  let c5 = trainBatch (gaussian 0.7 0.7) c3 xs
-  let c6 = trainBatch (gaussian 0.6 0.6) c3 xs
-  let c7 = trainBatch (gaussian 0.5 0.5) c3 xs
-  let c8 = trainBatch (gaussian 0.4 0.4) c3 xs
-  let c9 = trainBatch (gaussian 0.3 0.3) c3 xs
-  let c10 = trainBatch (gaussian 0.2 0.2) c3 xs
-  -- Save the SOM as an image.
-  print $ GM.toList $ GM.map vector2hex c10
+  let c2 = foldl' train c xs
+  -- Write the result.
+  print . GM.toList . GM.map vector2hex . toGridMap $ c2
+  -- Create an image file showing the results
+  BS.writeFile "map.svg" . renderSvg . drawColourMap . toGridMap $ c2
+  putStrLn "The output image is map.svg"
 
----- Build a self-organising map (SOM) initialised with random values.
-buildSOM :: RandomGen r => Rand r (GM.GridMap HexHexGrid (Int,Int) Pixel)
-buildSOM = do
-  ps <- sequence $ replicate 7 emptyPattern
-  return $ GM.lazyGridMap (hexHexGrid 2) ps
+-- Build a classifier initialised with random values.
+buildSOM :: RandomGen r => Int -> Rand r (SOM (LGridMap HexHexGrid) k Pixel)
+buildSOM n = do
+  ps <- replicateM 7 emptyPattern
+  let g = hexHexGrid 2      -- The grid we'll use for our colour map
+  let gm = lazyGridMap g ps -- a map from grid positions to colours
+  return $ defaultSOM gm 0.25 1 n
 
 vector2hex :: [Double] -> String
 vector2hex xs = '#' : foldr (showHex . round) "" xs
@@ -96,17 +111,13 @@ emptyPattern = do
 -- and blue components of that pixel. (We're omitting the alpha component.)
 --
 
-instance Pattern Pixel Double where
-   difference = euclideanDistanceSquared
-   makeSimilar = adjustVector
+instance Pattern Pixel where
+  type Metric Pixel = Double
+  difference = euclideanDistanceSquared
+  makeSimilar = adjustVector
 
 img2vectors :: UArray (Int, Int, Int) Word8 -> [Pixel]
 img2vectors img = map (take 3) $ chunksOf 4 $ map fromIntegral $ elems img
-
---vectors2img :: [Pixel] -> UArray (Int, Int, Int) Word8
---vectors2img ps = array (a,b) 
---  where ps' = concatMap f ps
---        f (Pixel xs) = map round xs
 
 chunksOf :: Int -> [a] -> [[a]]
 chunksOf n xs = fst $ takeNextChunk n ([],xs)
@@ -116,5 +127,30 @@ takeNextChunk _ (as,[]) = (as,[])
 takeNextChunk n (as,xs) = takeNextChunk n (a:as,xs')
   where (a,xs') = splitAt n xs
 
+--
+-- The code below generates the output image
+--
 
+drawColourMap :: (GM.GridMap gm Pixel, 
+  Index (GM.BaseGrid gm Pixel) ~ (Int, Int)) =>
+    gm Pixel -> Svg
+drawColourMap c = renderDia SVG (SVGOptions sizeSpec) (pad 1.1 diagram)
+  where (centre:outer) = map drawHexagon . GM.toList $ c
+        directions = iterate (rotateBy (1/6)) unitX
+        ring = zip directions outer
+        diagram = appends centre ring
+
+sizeSpec :: SizeSpec2D
+sizeSpec = Dims 400.0 400.0
+
+drawHexagon
+  :: (Renderable Text b, Renderable (Path R2) b, Backend b R2) =>
+     ((Int, Int), Pixel) -> Diagram b R2
+drawHexagon (index, rgb@(r:g:b:_)) = 
+  mconcat [ label,
+            hexagon 20 # lw 0.02 # fc colour # rotateBy (1/4) ]
+  where label = (text (show index) # fc white # fontSize 5 ||| strutY 5)
+                ===
+                (text (vector2hex rgb) # fc white # fontSize 5 ||| strutY 5)
+        colour = sRGB (r/256) (g/256) (b/256)
 

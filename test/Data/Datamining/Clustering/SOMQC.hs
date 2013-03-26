@@ -10,7 +10,8 @@
 -- Tests
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE UnicodeSyntax, MultiParamTypeClasses #-}
+{-# LANGUAGE UnicodeSyntax, MultiParamTypeClasses, TypeFamilies, 
+    FlexibleInstances, FlexibleContexts #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults -fno-warn-orphans #-}
 
 module Data.Datamining.Clustering.SOMQC
@@ -18,165 +19,172 @@ module Data.Datamining.Clustering.SOMQC
     test
   ) where
 
-import Data.Datamining.Clustering.SOM
+import Data.Datamining.Pattern (Pattern, Metric, difference, 
+  euclideanDistanceSquared, magnitudeSquared, makeSimilar)
+import Data.Datamining.Clustering.Classifier(Classifier, classify, 
+  classifyAndTrain, differences, diffAndTrain, models,
+  numModels, train, trainBatch)
 import Data.Datamining.Clustering.SOMInternal
 
-import Control.Applicative ((<$>), (<*>))
+import Control.Applicative ((<$>))
+import Data.Function (on)
 import Data.Eq.Unicode ((≡), (≠))
 import Data.Ord.Unicode ((≤))
 import Data.List (sort)
-import Math.Geometry.Grid (Grid, HexHexGrid, hexHexGrid, tileCount)
-import Math.Geometry.GridMap ((!), lazyGridMap, GridMap, elems)
+import Math.Geometry.Grid (HexHexGrid, hexHexGrid)
+import Math.Geometry.GridMap ((!), GridMap)
+import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
 import Test.Framework as TF (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose, 
-  Property, property, sized, vector, vectorOf)
+  Property, property, sized, vectorOf)
 
-newtype UnitInterval = FromDouble Double deriving Show
+newtype TestPattern = MkPattern Double deriving Show
 
-instance Arbitrary UnitInterval where
-  arbitrary = FromDouble <$> choose (0,1)
+instance Eq TestPattern where
+  (==) = (==) `on` toDouble
 
-prop_adjustVector_doesnt_choke_on_infinite_lists ∷
-  [Double] → UnitInterval → Property
-prop_adjustVector_doesnt_choke_on_infinite_lists xs (FromDouble d) = 
-  property $ 
-    length (adjustVector xs d [0,1..]) ≡ length xs
+instance Ord TestPattern where
+  compare = compare `on` toDouble
 
-data TwoVectorsSameLength = TwoVectorsSameLength [Double] [Double] 
-  deriving Show
+instance Pattern TestPattern where
+  type Metric TestPattern = Double
+  difference (MkPattern a) (MkPattern b) = a - b
+  makeSimilar orig@(MkPattern a) r (MkPattern b)
+    | r < 0     = error "Negative learning rate"
+    | r > 1     = error "Learning rate > 1"
+    | r ≡ 1     = orig
+    | otherwise = MkPattern (b + delta)
+        where diff = a - b
+              delta = r*diff
 
-sizedTwoVectorsSameLength ∷ Int → Gen TwoVectorsSameLength
-sizedTwoVectorsSameLength n = 
-  TwoVectorsSameLength <$> vector n <*> vector n
+instance Arbitrary TestPattern where
+  arbitrary = MkPattern <$> arbitrary
 
-instance Arbitrary TwoVectorsSameLength where
-  arbitrary = sized sizedTwoVectorsSameLength
+toDouble ∷ TestPattern → Double
+toDouble (MkPattern a) = a
 
-prop_zero_adjustment_is_no_adjustment ∷ 
-  TwoVectorsSameLength → Property
-prop_zero_adjustment_is_no_adjustment (TwoVectorsSameLength xs ys) = 
-  property $ adjustVector xs 0 ys ≡ ys
+absDiff ∷ [TestPattern] → [TestPattern] → Double
+absDiff xs ys = euclideanDistanceSquared xs' ys'
+  where xs' = map toDouble xs
+        ys' = map toDouble ys
 
-prop_full_adjustment_gives_perfect_match ∷ 
-  TwoVectorsSameLength → Property
-prop_full_adjustment_gives_perfect_match (TwoVectorsSameLength xs ys) = 
-  property $ adjustVector xs 1 ys ≡ xs
+fractionDiff ∷ [TestPattern] → [TestPattern] → Double
+fractionDiff xs ys = if denom ≡ 0 then 0 else d / denom
+  where d = sqrt $ euclideanDistanceSquared xs' ys'
+        denom = max xMag yMag
+        xMag = sqrt $ magnitudeSquared xs'
+        yMag = sqrt $ magnitudeSquared ys'
+        xs' = map toDouble xs
+        ys' = map toDouble ys
 
-prop_adjustVector_improves_similarity ∷ 
-  TwoVectorsSameLength → UnitInterval → Property
-prop_adjustVector_improves_similarity 
-  (TwoVectorsSameLength xs ys) (FromDouble a) = 
-    a > 0 && a < 1 && not (null xs) ==> d2 < d1
-      where d1 = euclideanDistanceSquared xs ys
-            d2 = euclideanDistanceSquared xs ys'
-            ys' = adjustVector xs a ys
+approxEqual ∷ [TestPattern] → [TestPattern] → Bool
+approxEqual xs ys = fractionDiff xs ys ≤ 0.1
 
-instance Pattern Double Double where
-  difference x y = abs (y-x)
-  makeSimilar x r y = y + r*(x-y)
+data SOMandTargets = SOMandTargets (SOM (LGridMap HexHexGrid) (Int, Int)
+  TestPattern) [TestPattern] String
 
-data ClassifierAndTargets = ClassifierAndTargets 
-  (GridMap HexHexGrid (Int,Int) Double) [Double] 
-    deriving Show
+instance Show SOMandTargets where
+  show (SOMandTargets _ _ desc) = desc
+
+buildSOMandTargets 
+  ∷ Int → [TestPattern] → Double → Double → Int → [TestPattern] → SOMandTargets
+buildSOMandTargets len ps r w t targets = SOMandTargets s targets desc
+    where g = hexHexGrid len
+          gm = lazyGridMap g ps
+          s = defaultSOM gm r w t
+          desc = "buildSOMandTargets " ++ show len ++ " " ++ show ps ++
+            " " ++ show r ++ " " ++ show w ++ " " ++ show t ++ " " ++
+            show targets
 
 -- | Generate a classifier and a training set. The training set will 
 --   consist @j@ vectors of equal length, where @j@ is the number of 
 --   patterns the classifier can model. After running through the 
 --   training set a few times, the classifier should be very accurate at
 --   identifying any of those @j@ vectors.
-sizedClassifierAndTargets ∷ Int → Gen ClassifierAndTargets
-sizedClassifierAndTargets n = do
+sizedSOMandTargets ∷ Int → Gen SOMandTargets
+sizedSOMandTargets n = do
   sideLength ← choose (1, min (n+1) 5) --avoid long tests
-  let g = hexHexGrid sideLength
-  let numberOfPatterns = tileCount g
+  let tileCount = 3*sideLength*(sideLength-1) + 1
+  let numberOfPatterns = tileCount
   ps ← vectorOf numberOfPatterns arbitrary
-  let c = lazyGridMap g ps
+  r ← choose (0, 1)
+  w0 ← choose (0, 2)
+  tMax ← choose (1, 10)
   targets ← vectorOf numberOfPatterns arbitrary
-  return $ ClassifierAndTargets c targets
+  return $ buildSOMandTargets sideLength ps r w0 tMax targets
   
-instance Arbitrary ClassifierAndTargets where
-  arbitrary = sized sizedClassifierAndTargets
-
-fractionDiff ∷ (Floating a, Ord a) ⇒ [a] → [a] → a
-fractionDiff xs ys = if denom ≡ 0 then 0 else d / denom
-  where d = sqrt $ euclideanDistanceSquared xs ys
-        denom = max xMag yMag
-        xMag = sqrt $ magnitudeSquared xs
-        yMag = sqrt $ magnitudeSquared ys
-
-approxEqual ∷ (Floating a, Ord a) ⇒ [a] → [a] → Bool
-approxEqual xs ys = fractionDiff xs ys ≤ 0.1
+instance Arbitrary SOMandTargets where
+  arbitrary = sized sizedSOMandTargets
 
 -- | If we use a fixed learning rate of one (regardless of the distance
 --   from the BMU), and train a classifier once on one pattern, then all
 --   nodes should match the input vector.
-prop_global_instant_training_works ∷ ClassifierAndTargets → Property
-prop_global_instant_training_works (ClassifierAndTargets c xs) = 
-  property $ elems c' `approxEqual` replicate (tileCount c) x
+prop_global_instant_training_works ∷ SOMandTargets → Property
+prop_global_instant_training_works (SOMandTargets s xs _) = 
+  property $ finalModels `approxEqual` expectedModels
     where x = head xs
-          c' = train (\_ → 1.0) c x
+          gm = toGridMap s ∷ LGridMap HexHexGrid TestPattern
+          f = (\_ _ → 1) ∷ Int → Int → Metric TestPattern
+          s2 = customSOM gm f ∷ SOM (LGridMap HexHexGrid) (Int, Int) TestPattern
+          s3 = train s2 x
+          finalModels = models s3 ∷ [TestPattern]
+          expectedModels = replicate (numModels s) x ∷ [TestPattern]
 
-prop_training_works ∷ ClassifierAndTargets → Property
-prop_training_works (ClassifierAndTargets c xs) = errBefore ≠ 0 ==>
+prop_training_works ∷ SOMandTargets → Property
+prop_training_works (SOMandTargets s xs _) = errBefore ≠ 0 ==>
   errAfter < errBefore
-    where (bmu, c') = classifyAndTrain (gaussian 0.5 0.8) c x
+    where (bmu, s') = classifyAndTrain s x
           x = head xs
-          errBefore = abs (x - c ! bmu)
-          errAfter = abs (x - c' ! bmu)
+          errBefore = abs $ toDouble x - toDouble (sGridMap s ! bmu)
+          errAfter = abs $ toDouble x - toDouble (sGridMap s' ! bmu)
 
---   Invoking @diffAndTrain f c p@ should give identical results to
---   @(p `classify` c, train f c p)@.
-prop_classifyAndTrainEquiv ∷ ClassifierAndTargets → Property
-prop_classifyAndTrainEquiv (ClassifierAndTargets c ps) = property $
-  classifyAndTrain f c p ≡ (c `classify` p, train f c p)
-    where f = (gaussian 0.5 0.8)
-          p = head ps
+--   Invoking @diffAndTrain f s p@ should give identical results to
+--   @(p `classify` s, train s f p)@.
+prop_classifyAndTrainEquiv ∷ SOMandTargets → Property
+prop_classifyAndTrainEquiv (SOMandTargets s ps _) = property $
+  bmu ≡ s `classify` p && sGridMap s1 ≡ sGridMap s2
+    where p = head ps
+          (bmu, s1) = classifyAndTrain s p
+          s2 = train s p         
 
---   Invoking @diffAndTrain f c p@ should give identical results to
---   @(c `diffs` p, train f c p)@.
-prop_diffAndTrainEquiv ∷ ClassifierAndTargets → Property
-prop_diffAndTrainEquiv (ClassifierAndTargets c ps) = property $
-  diffAndTrain f c p ≡ (c `diffs` p, train f c p)
-    where f = (gaussian 0.5 0.8)
-          p = head ps
+--   Invoking @diffAndTrain f s p@ should give identical results to
+--   @(s `diff` p, train s f p)@.
+prop_diffAndTrainEquiv ∷ SOMandTargets → Property
+prop_diffAndTrainEquiv (SOMandTargets s ps _) = property $
+  diffs ≡ s `differences` p && sGridMap s1 ≡ sGridMap s2
+    where p = head ps
+          (diffs, s1) = diffAndTrain s p
+          s2 = train s p
 
 -- | The training set consists of the same vectors in the same order, 
 --   several times over. So the resulting classifications should consist
 --   of the same integers in the same order, over and over.
-prop_batch_training_works ∷ ClassifierAndTargets → Property
-prop_batch_training_works (ClassifierAndTargets c xs) = property $
+prop_batch_training_works ∷ SOMandTargets → Property
+prop_batch_training_works (SOMandTargets s xs _) = property $
   classifications ≡ (concat . replicate 5) firstSet 
   where trainingSet = (concat . replicate 5) xs
-        c' = trainBatch (gaussian 0.5 0.8) c trainingSet
-        classifications = map (classify c') trainingSet
+        s' = trainBatch s trainingSet
+        classifications = map (classify s') trainingSet
         firstSet = take (length xs) classifications
 
 -- | If we train a classifier once on a set of patterns, where the 
 --   number of patterns in the set is equal to the number of nodes in
 --   the classifier, then the classifier should become a better 
---   representation of the training set. The training set is designed to
---   reduce the possibility that a single node will train to more than
---   one pattern, rendering the test invalid.
-prop_batch_training_works2 ∷ ClassifierAndTargets → Property
-prop_batch_training_works2 (ClassifierAndTargets c _) = 
+--   representation of the training set. The training set is designed*
+--   to reduce the possibility that a single node will train to more
+--   than one pattern (which would render the test invalid).
+prop_batch_training_works2 ∷ SOMandTargets → Property
+prop_batch_training_works2 (SOMandTargets s _ _) = 
   errBefore ≠ 0 ==> errAfter < errBefore
-    where c' = trainBatch (gaussian 0.5 0.8) c xs
-          xs = take (tileCount c) [0,100..]
-          errBefore = euclideanDistanceSquared (sort xs) (sort (elems c))
-          errAfter = euclideanDistanceSquared (sort xs) (sort (elems c'))
+    where s' = trainBatch s xs
+          xs = map MkPattern $ take (numModels s) [0,1000..] -- see *
+          errBefore = absDiff (sort xs) (sort (models s))
+          errAfter = absDiff (sort xs) (sort (models s'))
 
 test ∷ Test
-test = testGroup "QuickCheck Data.Datamining.Clustering.SOMQC"
+test = testGroup "QuickCheck Data.Datamining.Clustering.SOM.ClassifierQC"
   [
-    testProperty "prop_adjustVector_doesnt_choke_on_infinite_lists"
-      prop_adjustVector_doesnt_choke_on_infinite_lists,
-    testProperty "prop_zero_adjustment_is_no_adjustment"
-      prop_zero_adjustment_is_no_adjustment,
-    testProperty "prop_full_adjustment_gives_perfect_match"
-      prop_full_adjustment_gives_perfect_match,
-    testProperty "prop_adjustVector_improves_similarity"
-      prop_adjustVector_improves_similarity,
     testProperty "prop_global_instant_training_works"
       prop_global_instant_training_works,
     testProperty "prop_training_works" prop_training_works,

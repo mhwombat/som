@@ -16,7 +16,7 @@
 --
 -- In layman's terms, a SOM can be useful when you you want to discover
 -- the underlying structure of some data. A tutorial is available at
--- <https://github.com/mhwombat/som/wiki>
+-- <https://github.com/mhwombat/som/wiki>.
 --
 -- References:
 --
@@ -28,23 +28,20 @@
 {-# LANGUAGE UnicodeSyntax #-}
 module Data.Datamining.Clustering.SOM
   (
+    -- * Construction
     SOM,
     defaultSOM,
     customSOM,
     gaussian,
     decayingGaussian,
-    toGridMap
+    -- * Deconstruction
+    toGridMap,
+    -- * Advanced control
+    trainNeighbourhood,
+    incrementCounter
   ) where
 
 import Data.Datamining.Clustering.SOMInternal (SOM, defaultSOM,
-  customSOM, gaussian, decayingGaussian, toGridMap)
-
-{- $Vector
-If you wish to use a SOM with raw numeric vectors, use @no-warn-orphans@
-and add the following to your code:
-
-> instance (Floating a, Fractional a, Ord a, Eq a) ⇒ Pattern [a] a where
->   difference = euclideanDistanceSquared
->   makeSimilar = adjustVector
--}
+  customSOM, gaussian, decayingGaussian, toGridMap, trainNeighbourhood,
+  incrementCounter)
 

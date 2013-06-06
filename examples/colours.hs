@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, FlexibleInstances, FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies, FlexibleInstances, FlexibleContexts, TypeFamilies #-}
 
 {-
 
@@ -25,7 +25,8 @@ import Data.Array.IArray (elems)
 import Data.Array.Unboxed (UArray)
 import Data.Array.ST (runSTArray)
 import GHC.Arr (listArray, readSTArray, thawSTArray, writeSTArray)
-import Math.Geometry.Grid (HexHexGrid, Index, hexHexGrid)
+import Math.Geometry.Grid (Index)
+import Math.Geometry.Grid.Hexagonal (HexHexGrid, hexHexGrid)
 import qualified Math.Geometry.GridMap as GM (GridMap, BaseGrid, map,
   toList)
 import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
@@ -35,11 +36,11 @@ import System.Directory (doesFileExist)
 -- These imports are for the graphics
 import Data.Colour.SRGB (sRGB)
 import Diagrams.Prelude
-import Diagrams.Backend.SVG
+import Diagrams.Backend.SVG -- from diagrams-svg
 import qualified Data.ByteString.Lazy as BS
-import Text.Blaze.Svg.Renderer.Utf8 (renderSvg)
-import Text.Blaze.Svg.Internal (Svg)
-import Diagrams.TwoD.Text (Text)
+import Text.Blaze.Svg.Renderer.Utf8 (renderSvg) -- from blaze-svg
+import Text.Blaze.Svg.Internal (Svg) -- from blaze-svg
+import Diagrams.TwoD.Text (Text) -- from diagrams-lib
 
 inputFile :: FilePath
 inputFile = "Sample.png"
@@ -49,15 +50,9 @@ main = do
   -- Initialise the image library
   ilInit
   -- Read the image
-  fileExists <- doesFileExist inputFile
-  unless fileExists $ error ("Can't find file: " ++ inputFile)
-  img <- readImage inputFile
-  -- Convert the image data to vectors and shuffle them. (If we didn't shuffle
-  -- them, the colours at the bottom right of the image would take precedence
-  -- over those at the top left.)
-  xs <- evalRandIO $ shuffle $ img2vectors img
+  xs <- readPixels inputFile
   -- Build a self-organising map (SOM) initialised with small random values.
-  c <- evalRandIO $ buildSOM (length xs)
+  c <- evalRandIO $ buildSOM (length xs) :: IO (SOM (LGridMap HexHexGrid) k Pixel)
   -- Train it with the vectors from the image.
   let c2 = foldl' train c xs
   -- Write the result.
@@ -66,13 +61,23 @@ main = do
   BS.writeFile "map.svg" . renderSvg . drawColourMap . toGridMap $ c2
   putStrLn "The output image is map.svg"
 
+readPixels :: FilePath -> IO [Pixel]
+readPixels f = do
+  fileExists <- doesFileExist inputFile
+  unless fileExists $ error ("Can't find file: " ++ inputFile)
+  img <- readImage inputFile
+  -- Convert the image data to vectors and shuffle them. (If we didn't shuffle
+  -- them, the colours at the bottom right of the image would take precedence
+  -- over those at the top left.)
+  evalRandIO $ shuffle $ img2vectors img
+
 -- Build a classifier initialised with random values.
 buildSOM :: RandomGen r => Int -> Rand r (SOM (LGridMap HexHexGrid) k Pixel)
 buildSOM n = do
   ps <- replicateM 7 emptyPattern
   let g = hexHexGrid 2      -- The grid we'll use for our colour map
   let gm = lazyGridMap g ps -- a map from grid positions to colours
-  return $ defaultSOM gm 0.25 1 n
+  return $ defaultSOM gm 1 0.3 n
 
 vector2hex :: [Double] -> String
 vector2hex xs = '#' : foldr (showHex . round) "" xs
@@ -104,17 +109,17 @@ emptyPattern = do
   xs <- getRandomRs (0.0, 255.0)
   return (take 3 xs)
 
+instance Pattern Pixel where
+  type Metric Pixel = Double
+  difference = euclideanDistanceSquared
+  makeSimilar = adjustVector
+
 --
 -- The code below converts the image data into a sequence of vectors. There's
 -- a vector for each pixel in the image. Each vector represents one pixel,
 -- and consists of three numbers between 0 and 255, for the red, green, 
 -- and blue components of that pixel. (We're omitting the alpha component.)
 --
-
-instance Pattern Pixel where
-  type Metric Pixel = Double
-  difference = euclideanDistanceSquared
-  makeSimilar = adjustVector
 
 img2vectors :: UArray (Int, Int, Int) Word8 -> [Pixel]
 img2vectors img = map (take 3) $ chunksOf 4 $ map fromIntegral $ elems img

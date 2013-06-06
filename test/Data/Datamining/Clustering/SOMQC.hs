@@ -10,7 +10,7 @@
 -- Tests
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE UnicodeSyntax, MultiParamTypeClasses, TypeFamilies, 
+{-# LANGUAGE UnicodeSyntax, MultiParamTypeClasses, TypeFamilies,
     FlexibleInstances, FlexibleContexts #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults -fno-warn-orphans #-}
 
@@ -19,9 +19,9 @@ module Data.Datamining.Clustering.SOMQC
     test
   ) where
 
-import Data.Datamining.Pattern (Pattern, Metric, difference, 
+import Data.Datamining.Pattern (Pattern, Metric, difference,
   euclideanDistanceSquared, magnitudeSquared, makeSimilar)
-import Data.Datamining.Clustering.Classifier(Classifier, classify, 
+import Data.Datamining.Clustering.Classifier(Classifier, classify,
   classifyAndTrain, differences, diffAndTrain, models,
   numModels, train, trainBatch)
 import Data.Datamining.Clustering.SOMInternal
@@ -31,12 +31,12 @@ import Data.Function (on)
 import Data.Eq.Unicode ((≡), (≠))
 import Data.Ord.Unicode ((≤))
 import Data.List (sort)
-import Math.Geometry.Grid (HexHexGrid, hexHexGrid)
+import Math.Geometry.Grid.Hexagonal (HexHexGrid, hexHexGrid)
 import Math.Geometry.GridMap ((!), GridMap)
 import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
 import Test.Framework as TF (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose, 
+import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose,
   Property, property, sized, vectorOf)
 
 newtype TestPattern = MkPattern Double deriving Show
@@ -87,7 +87,7 @@ data SOMandTargets = SOMandTargets (SOM (LGridMap HexHexGrid) (Int, Int)
 instance Show SOMandTargets where
   show (SOMandTargets _ _ desc) = desc
 
-buildSOMandTargets 
+buildSOMandTargets
   ∷ Int → [TestPattern] → Double → Double → Int → [TestPattern] → SOMandTargets
 buildSOMandTargets len ps r w t targets = SOMandTargets s targets desc
     where g = hexHexGrid len
@@ -97,9 +97,9 @@ buildSOMandTargets len ps r w t targets = SOMandTargets s targets desc
             " " ++ show r ++ " " ++ show w ++ " " ++ show t ++ " " ++
             show targets
 
--- | Generate a classifier and a training set. The training set will 
---   consist @j@ vectors of equal length, where @j@ is the number of 
---   patterns the classifier can model. After running through the 
+-- | Generate a classifier and a training set. The training set will
+--   consist @j@ vectors of equal length, where @j@ is the number of
+--   patterns the classifier can model. After running through the
 --   training set a few times, the classifier should be very accurate at
 --   identifying any of those @j@ vectors.
 sizedSOMandTargets ∷ Int → Gen SOMandTargets
@@ -113,7 +113,7 @@ sizedSOMandTargets n = do
   tMax ← choose (1, 10)
   targets ← vectorOf numberOfPatterns arbitrary
   return $ buildSOMandTargets sideLength ps r w0 tMax targets
-  
+
 instance Arbitrary SOMandTargets where
   arbitrary = sized sizedSOMandTargets
 
@@ -121,7 +121,7 @@ instance Arbitrary SOMandTargets where
 --   from the BMU), and train a classifier once on one pattern, then all
 --   nodes should match the input vector.
 prop_global_instant_training_works ∷ SOMandTargets → Property
-prop_global_instant_training_works (SOMandTargets s xs _) = 
+prop_global_instant_training_works (SOMandTargets s xs _) =
   property $ finalModels `approxEqual` expectedModels
     where x = head xs
           gm = toGridMap s ∷ LGridMap HexHexGrid TestPattern
@@ -146,7 +146,7 @@ prop_classifyAndTrainEquiv (SOMandTargets s ps _) = property $
   bmu ≡ s `classify` p && sGridMap s1 ≡ sGridMap s2
     where p = head ps
           (bmu, s1) = classifyAndTrain s p
-          s2 = train s p         
+          s2 = train s p
 
 --   Invoking @diffAndTrain f s p@ should give identical results to
 --   @(s `diff` p, train s f p)@.
@@ -157,25 +157,34 @@ prop_diffAndTrainEquiv (SOMandTargets s ps _) = property $
           (diffs, s1) = diffAndTrain s p
           s2 = train s p
 
--- | The training set consists of the same vectors in the same order, 
+--   Invoking @trainNeighbourhood s (classify s p) p@ should give
+--   identical results to @train s p@.
+prop_trainNeighbourhoodEquiv ∷ SOMandTargets → Property
+prop_trainNeighbourhoodEquiv (SOMandTargets s ps _) = property $
+  sGridMap s1 ≡ sGridMap s2
+    where p = head ps
+          s1 = trainNeighbourhood s (classify s p) p
+          s2 = train s p
+
+-- | The training set consists of the same vectors in the same order,
 --   several times over. So the resulting classifications should consist
 --   of the same integers in the same order, over and over.
 prop_batch_training_works ∷ SOMandTargets → Property
 prop_batch_training_works (SOMandTargets s xs _) = property $
-  classifications ≡ (concat . replicate 5) firstSet 
+  classifications ≡ (concat . replicate 5) firstSet
   where trainingSet = (concat . replicate 5) xs
         s' = trainBatch s trainingSet
         classifications = map (classify s') trainingSet
         firstSet = take (length xs) classifications
 
--- | If we train a classifier once on a set of patterns, where the 
+-- | If we train a classifier once on a set of patterns, where the
 --   number of patterns in the set is equal to the number of nodes in
---   the classifier, then the classifier should become a better 
+--   the classifier, then the classifier should become a better
 --   representation of the training set. The training set is designed*
 --   to reduce the possibility that a single node will train to more
 --   than one pattern (which would render the test invalid).
 prop_batch_training_works2 ∷ SOMandTargets → Property
-prop_batch_training_works2 (SOMandTargets s _ _) = 
+prop_batch_training_works2 (SOMandTargets s _ _) =
   errBefore ≠ 0 ==> errAfter < errBefore
     where s' = trainBatch s xs
           xs = map MkPattern $ take (numModels s) [0,1000..] -- see *
@@ -191,8 +200,8 @@ test = testGroup "QuickCheck Data.Datamining.Clustering.SOM.ClassifierQC"
     testProperty "prop_classifyAndTrainEquiv"
       prop_classifyAndTrainEquiv,
     testProperty "prop_diffAndTrainEquiv" prop_diffAndTrainEquiv,
+    testProperty "prop_trainNeighbourhoodEquiv" prop_trainNeighbourhoodEquiv,
     testProperty "prop_batch_training_works" prop_batch_training_works,
     testProperty "prop_batch_training_works2"
       prop_batch_training_works2
   ]
-

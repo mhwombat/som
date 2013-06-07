@@ -5,7 +5,7 @@
 This program builds a Self-Organising Map (SOM) based on EU mortality
 rates for 2011. As the SOM learns the rates in the image, it builds a 
 map of the data. The map here is a rectangular grid with 3
-tiles in it, so it divides the values into 7 clusters. The value 
+tiles in it, so it divides the values into 3 clusters. The value 
 associated with each tile is the model (i.e., the "typical" death rate)
 for that cluster.
 -}

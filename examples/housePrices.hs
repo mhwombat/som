@@ -2,14 +2,11 @@
 
 {-
 
-This program builds a Self-Organising Map (SOM) based on the colours in an
-image. As the SOM learns the colours in the image, it builds a map of the
-colour distribution of the image. The map here is a hexagonal grid with 7
-tiles in it, so it divides the colours into 7 clusters. The value associated
-with each tile is the RGB value of the colour for that cluster.
-
-The picture at <https://github.com/mhwombat/som/blob/master/examples/somTutorial.png?raw=true> 
-will make this clearer.
+This program builds a Self-Organising Map (SOM) based on some (fake)
+housing prices. As the SOM learns the data, it builds a map of the
+data. The map here is a square grid with 4 tiles in it, so it divides 
+the prices into 4 clusters. The value associated with each tile is the 
+model ("typical" price) of the houses in that cluster.
 -}
 
 import Codec.Image.DevIL (ilInit, readImage)
@@ -51,7 +48,7 @@ trainAndPrint c x = do
 -- Build a classifier initialised with random values.
 buildSOM :: RandomGen r => Int -> Rand r (SOM (LGridMap RectSquareGrid) k Price)
 buildSOM n = do
-  let g = rectSquareGrid 1 8  -- The grid we'll use for our SOM
+  let g = rectSquareGrid 1 4  -- The grid we'll use for our SOM
   ps <- replicateM (tileCount g) randomPrice -- random initial values
   let gm = lazyGridMap g ps -- a map from grid positions to prices
   return $ defaultSOM gm 1.0 0.3 n

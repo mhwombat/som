@@ -1,5 +1,5 @@
 name:           som
-version:        4.2
+version:        5.0
 synopsis:       Self-Organising Maps
 description:    A Kohonen Self-organising Map (SOM) maps input patterns 
                 onto a regular grid (usually two-dimensional) where each

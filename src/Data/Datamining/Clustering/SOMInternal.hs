@@ -20,7 +20,6 @@ module Data.Datamining.Clustering.SOMInternal
     SOM(..),
     defaultSOM,
     customSOM,
-    gaussian,
     decayingGaussian,
     -- * Deconstruction
     toGridMap,
@@ -149,7 +148,7 @@ instance
 --   at "time" zero. The BMU is the model which best matches the
 --   current target pattern.
 --
---   [@w@] The width of the bell curve at "time" zero.
+--   [@w@] The width of the bell curve at time zero.
 --
 --   [@t@] Controls how rapidly the learning rate decays. After this
 --   time, any learning done by the classifier will be negligible.
@@ -190,19 +189,6 @@ customSOM gm f =
         sCounter=0
       }
 
--- | Calculates @r/e/^(-d^2/2w^2)@.
---   This form of the Gaussian function is useful as a learning rate
---   function. In @'gaussian' r w d@, @r@ specifies the highest learning
---   rate, which will be applied to the SOM node that best matches the
---   input pattern. The learning rate applied to other nodes will be
---   applied based on their distance @d@ from the best matching node.
---   The value @w@ controls the \'width\' of the Gaussian. Higher values
---   of @w@ cause the learning rate to fall off more slowly with
---   distance @d@.
-gaussian ∷ Floating a ⇒ a → a → Int → a
-gaussian r w d = r * exp (-d'*d'/(2*w*w))
-  where d' = fromIntegral d
-
 -- | Configures a typical learning function for classifiers.
 --   @'decayingGaussian' r w0 tMax@ returns a bell curve-shaped
 --   function. At time zero, the maximum learning rate (applied to the
@@ -211,6 +197,8 @@ gaussian r w d = r * exp (-d'*d'/(2*w*w))
 --   @tMax@, the learning rate is negligible.
 decayingGaussian
   ∷ Floating a ⇒ a → a → Int → (Int → Int → a)
-decayingGaussian r w0 tMax =
-  \t d → let t' = fromIntegral t in gaussian r w0 d * exp (-t'/tMax')
-  where tMax' = fromIntegral tMax
+decayingGaussian r w0 tMax t d = r * s * exp (-(d'*d')/(2*w0*w0*s*s))
+    where s = exp (-t'/tMax')
+          t' = fromIntegral t
+          tMax' = fromIntegral tMax
+          d' = fromIntegral d

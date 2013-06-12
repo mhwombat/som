@@ -4,15 +4,15 @@
 
 This program builds a Self-Organising Map (SOM) based on some (fake)
 housing prices. As the SOM learns the data, it builds a map of the
-data. The map here is a square grid with 4 tiles in it, so it divides 
-the prices into 4 clusters. The value associated with each tile is the 
+data. The map here is a square grid with 4 tiles in it, so it divides
+the prices into 4 clusters. The value associated with each tile is the
 model ("typical" price) of the houses in that cluster.
 -}
 
 import Codec.Image.DevIL (ilInit, readImage)
 import Control.Monad (foldM_, forM_, unless, replicateM)
 import Control.Monad.Random (evalRandIO, Rand, RandomGen, getRandomR)
-import Data.Datamining.Pattern (adjustVector, 
+import Data.Datamining.Pattern (adjustVector,
   euclideanDistanceSquared, Pattern(..))
 import Data.Datamining.Clustering.SOM (SOM(..), defaultSOM, toGridMap)
 import Data.Datamining.Clustering.Classifier (Classifier, train, trainBatch)
@@ -123,4 +123,3 @@ inputData = [72160,151100,351600,350100,347700,149500,349500,73100,
   149400,148300,151000,350400,348900,150800,75120,149800,348100,75860,
   74140,150300,351300,150300,150000,899800,349900,151500,350100,151500,
   150200,149500]
-

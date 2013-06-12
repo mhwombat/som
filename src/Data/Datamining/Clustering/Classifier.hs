@@ -34,8 +34,8 @@ class Classifier (c ∷ * → * → *) k p where
   models ∷ c k p → [p]
 
   -- | @'differences' c target@ returns the indices of all nodes in 
-  --   @c@, paired with the difference between @target@ and the node's 
-  --   model.
+  --   @c@, paired with the difference between @target@ and the 
+  --   node's model.
   differences ∷ (Pattern p, v ~ Metric p) ⇒ c k p → p → [(k, v)]
 
   -- | @classify c target@ returns the index of the node in @c@ 
@@ -59,7 +59,8 @@ class Classifier (c ∷ * → * → *) k p where
   --   index of the node in @c@ whose model best matches the input
   --   @target@, and a modified copy of the classifier @c@ that has
   --   partially learned the @target@. Invoking @classifyAndTrain c p@
-  --   may be faster than invoking @(p `classify` c, train c p)@, but they
+  --   may be faster than invoking @(p `classify` c, train c p)@, but 
+  --   they
   --   should give identical results.
   classifyAndTrain 
     ∷ (Ord v, v ~ Metric p) ⇒ 

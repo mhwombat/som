@@ -21,6 +21,7 @@ module Data.Datamining.Clustering.SOMInternal
     defaultSOM,
     customSOM,
     decayingGaussian,
+    decayingGaussian2,
     -- * Deconstruction
     toGridMap,
     -- * Advanced control
@@ -189,16 +190,39 @@ customSOM gm f =
         sCounter=0
       }
 
--- | Configures a typical learning function for classifiers.
---   @'decayingGaussian' r w0 tMax@ returns a bell curve-shaped
+-- | Configures one possible learning function for classifiers.
+--   @'decayingGaussian' r0 w0 tMax@ returns a bell curve-shaped
 --   function. At time zero, the maximum learning rate (applied to the
---   BMU) is @r@, and the neighbourhood width is @w@. Over time the bell
---   curve shrinks and the learning rate tapers off, until at time
---   @tMax@, the learning rate is negligible.
+--   BMU) is @r0@, and the neighbourhood width is @w0@. Over time the
+--   neighbourhood width shrinks and the learning rate tapers off.
 decayingGaussian
   ∷ Floating a ⇒ a → a → Int → (Int → Int → a)
 decayingGaussian r w0 tMax t d = r * s * exp (-(d'*d')/(2*w0*w0*s*s))
     where s = exp (-t'/tMax')
           t' = fromIntegral t
           tMax' = fromIntegral tMax
+          d' = fromIntegral d
+
+-- | Configures a typical learning function for classifiers.
+--   @'decayingGaussian' r0 rf w0 wf tf@ returns a bell curve-shaped
+--   function. At time zero, the maximum learning rate (applied to the
+--   BMU) is @r0@, and the neighbourhood width is @w0@. Over time the
+--   bell curve shrinks and the learning rate tapers off, until at time
+--   @tf@, the maximum learning rate (applied to the BMU) is @rf@,
+--   and the neighbourhood width is @wf@. Normally the parameters
+--   should be chosen such that:
+--
+--   * 0 < rf << r0 < 1
+--
+--   * 0 < wf << w0
+--
+--   where << means "is much smaller than" (not the Haskell @<<@
+--   operator!) 
+decayingGaussian2 :: Floating a ⇒ a → a → a → a → Int → (Int → Int → a)
+decayingGaussian2 r0 rf w0 wf tf t d = r * exp (-(d'*d')/(w*w))
+    where a = t'/tf'
+          r = r0 * ((rf/r0)**a)
+          w = w0 * ((wf/w0)**a)
+          t' = fromIntegral t
+          tf' = fromIntegral tf
           d' = fromIntegral d

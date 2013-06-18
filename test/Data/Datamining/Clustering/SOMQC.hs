@@ -26,7 +26,7 @@ import Data.Datamining.Clustering.Classifier(Classifier, classify,
   numModels, train, trainBatch)
 import Data.Datamining.Clustering.SOMInternal
 
-import Control.Applicative ((<$>))
+import Control.Applicative ((<$>), (<*>))
 import Data.Function (on)
 import Data.Eq.Unicode ((≡), (≠))
 import Data.Ord.Unicode ((≤))
@@ -37,7 +37,61 @@ import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
 import Test.Framework as TF (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose,
-  Property, property, sized, vectorOf)
+  Property, property, sized, suchThat, vectorOf)
+
+data GaussianArgs = GaussianArgs Double Double Int deriving Show
+
+positive :: (Num a, Ord a, Arbitrary a) => Gen a
+positive = arbitrary `suchThat` (> 0)
+
+instance Arbitrary GaussianArgs where
+  arbitrary = GaussianArgs <$> choose (0,1) <*> positive <*> positive
+
+prop_decayingGaussian_small_after_tMax :: GaussianArgs -> Property
+prop_decayingGaussian_small_after_tMax (GaussianArgs r w0 tMax) =
+  property $ decayingGaussian r w0 tMax (tMax+1) 0 < exp(-1)
+
+prop_decayingGaussian_small_far_from_bmu :: GaussianArgs -> Property
+prop_decayingGaussian_small_far_from_bmu (GaussianArgs r w0 tMax)
+  = property $
+      decayingGaussian r w0 tMax 0 (2*(ceiling w0)) < r * exp(-1)
+
+data GaussianArgs2 = GaussianArgs2 Double Double Double Double Int
+                       deriving Show
+
+instance Arbitrary GaussianArgs2 where
+  arbitrary = do
+    r0 <- choose (0,1)
+    rf <- choose (0,r0)
+    w0 <- positive
+    wf <- choose (0,w0)
+    tf <- positive
+    return $ GaussianArgs2 r0 rf w0 wf tf
+
+prop_decayingGaussian2_starts_at_r0 :: GaussianArgs2 -> Property
+prop_decayingGaussian2_starts_at_r0 (GaussianArgs2 r0 rf w0 wf tf) =
+  property $ abs ((decayingGaussian2 r0 rf w0 wf tf 0 0) - r0) < 0.01
+
+prop_decayingGaussian2_starts_at_w0 :: GaussianArgs2 -> Property
+prop_decayingGaussian2_starts_at_w0 (GaussianArgs2 r0 rf w0 wf tf) =
+  property $
+    decayingGaussian2 r0 rf w0 wf tf 0 inside >= r0 * exp (-1)
+    && decayingGaussian2 r0 rf w0 wf tf 0 outside < r0 * exp (-1)
+  where inside = floor w0
+        outside = ceiling w0 + 1
+
+prop_decayingGaussian2_decays_to_rf :: GaussianArgs2 -> Property
+prop_decayingGaussian2_decays_to_rf (GaussianArgs2 r0 rf w0 wf tf) =
+  property $ abs ((decayingGaussian2 r0 rf w0 wf tf tf 0) - rf) < 0.01
+
+prop_decayingGaussian2_shrinks_to_wf :: GaussianArgs2 -> Property
+prop_decayingGaussian2_shrinks_to_wf (GaussianArgs2 r0 rf w0 wf tf) =
+  property $
+  decayingGaussian2 r0 rf w0 wf tf tf inside >= rf * exp (-1)
+    && decayingGaussian2 r0 rf w0 wf tf tf outside < rf * exp (-1)
+  where inside = floor wf
+        outside = ceiling wf + 1
+
 
 newtype TestPattern = MkPattern Double deriving Show
 
@@ -194,6 +248,18 @@ prop_batch_training_works2 (SOMandTargets s _ _) =
 test ∷ Test
 test = testGroup "QuickCheck Data.Datamining.Clustering.SOM.ClassifierQC"
   [
+    testProperty "prop_decayingGaussian_small_after_tMax"
+      prop_decayingGaussian_small_after_tMax,
+    testProperty "prop_decayingGaussian_small_far_from_bmu"
+      prop_decayingGaussian_small_far_from_bmu,
+    testProperty "prop_decayingGaussian2_starts_at_r0"
+      prop_decayingGaussian2_starts_at_r0,
+    testProperty "prop_decayingGaussian2_starts_at_w0"
+      prop_decayingGaussian2_starts_at_w0,
+    testProperty "prop_decayingGaussian2_decays_to_rf"
+      prop_decayingGaussian2_decays_to_rf,
+    testProperty "prop_decayingGaussian2_shrinks_to_wf"
+      prop_decayingGaussian2_shrinks_to_wf,
     testProperty "prop_global_instant_training_works"
       prop_global_instant_training_works,
     testProperty "prop_training_works" prop_training_works,

@@ -10,8 +10,7 @@
 -- Tools for identifying patterns in data.
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE UnicodeSyntax, TypeFamilies, FlexibleContexts,
-    MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts, MultiParamTypeClasses #-}
 module Data.Datamining.Clustering.Classifier
   (
     Classifier(..)
@@ -23,37 +22,37 @@ import Data.Ord (comparing)
 
 -- | A machine which learns to classify input patterns. 
 --   Minimal complete definition: @trainBatch@, @reportAndTrain@.
-class Classifier (c ∷ * → * → *) k p where
+class Classifier (c :: * -> * -> *) k p where
   -- | Returns a list of index\/model pairs.
-  toList ∷ c k p → [(k, p)]
+  toList :: c k p -> [(k, p)]
 
   -- | Returns the number of models this classifier can learn.
-  numModels ∷ c k p → Int
+  numModels :: c k p -> Int
 
   -- | Returns the current models of the classifier.
-  models ∷ c k p → [p]
+  models :: c k p -> [p]
 
   -- | @'differences' c target@ returns the indices of all nodes in 
   --   @c@, paired with the difference between @target@ and the 
   --   node's model.
-  differences ∷ (Pattern p, v ~ Metric p) ⇒ c k p → p → [(k, v)]
+  differences :: (Pattern p, v ~ Metric p) => c k p -> p -> [(k, v)]
 
   -- | @classify c target@ returns the index of the node in @c@ 
   --   whose model best matches the @target@.
-  classify ∷ (Pattern p, Ord v, v ~ Metric p) ⇒ c k p → p → k
+  classify :: (Pattern p, Ord v, v ~ Metric p) => c k p -> p -> k
   classify c p = fst . minimumBy (comparing snd) $ differences c p
 
   -- | @'train' c target@ returns a modified copy
   --   of the classifier @c@ that has partially learned the @target@.
   train
-    ∷ (Ord v, v ~ Metric p) ⇒ 
-      c k p → p → c k p
+    :: (Ord v, v ~ Metric p) => 
+      c k p -> p -> c k p
   train c p = c'
     where (_, _, c') = reportAndTrain c p
 
   -- | @'trainBatch' c targets@ returns a modified copy
   --   of the classifier @c@ that has partially learned the @targets@.
-  trainBatch ∷ c k p → [p] → c k p
+  trainBatch :: c k p -> [p] -> c k p
 
   -- | @'classifyAndTrain' c target@ returns a tuple containing the
   --   index of the node in @c@ whose model best matches the input
@@ -63,8 +62,8 @@ class Classifier (c ∷ * → * → *) k p where
   --   they
   --   should give identical results.
   classifyAndTrain 
-    ∷ (Ord v, v ~ Metric p) ⇒ 
-      c k p → p → (k, c k p)
+    :: (Ord v, v ~ Metric p) => 
+      c k p -> p -> (k, c k p)
   classifyAndTrain c p = (bmu, c')
     where (bmu, _, c') = reportAndTrain c p
 
@@ -77,8 +76,8 @@ class Classifier (c ∷ * → * → *) k p where
   --   @(p `diff` c, train c p)@, but they should give identical
   --   results.
   diffAndTrain
-    ∷ (Ord v, v ~ Metric p) ⇒ 
-      c k p → p → ([(k, v)], c k p)
+    :: (Ord v, v ~ Metric p) => 
+      c k p -> p -> ([(k, v)], c k p)
   diffAndTrain c p = (ds, c')
     where (_, ds, c') = reportAndTrain c p
 
@@ -93,7 +92,7 @@ class Classifier (c ∷ * → * → *) k p where
   --   @(p `diff` c, train c p)@, but they should give identical
   --   results.
   reportAndTrain 
-    ∷ (Ord v, v ~ Metric p) ⇒ 
-      c k p → p → (k, [(k, v)], c k p)
+    :: (Ord v, v ~ Metric p) => 
+      c k p -> p -> (k, [(k, v)], c k p)
 
 

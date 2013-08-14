@@ -46,12 +46,15 @@ trainAndPrint c x = do
   return c2
 
 -- Build a classifier initialised with random values.
+-- I used random values here just to emphasise that the map organises
+-- itself. In practice, however, you could choose initial values that
+-- are spread evenly over the expected range of input values.
 buildSOM :: RandomGen r => Int -> Rand r (SOM (LGridMap RectSquareGrid) k Price)
 buildSOM n = do
   let g = rectSquareGrid 1 4  -- The grid we'll use for our SOM
   ps <- replicateM (tileCount g) randomPrice -- random initial values
   let gm = lazyGridMap g ps -- a map from grid positions to prices
-  return $ defaultSOM gm 1.0 0.3 n
+  return $ defaultSOM gm 0.5 0.1 0.3 0.1 n
 
 randomPrice :: RandomGen r => Rand r Price
 randomPrice = getRandomR (0, 500000)

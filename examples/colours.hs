@@ -72,12 +72,15 @@ readPixels f = do
   evalRandIO $ shuffle $ img2vectors img
 
 -- Build a classifier initialised with random values.
+-- I used random values here just to emphasise that the map organises
+-- itself. In practice, however, you could choose initial values that
+-- are spread evenly over the expected range of input values.
 buildSOM :: RandomGen r => Int -> Rand r (SOM (LGridMap HexHexGrid) k Pixel)
 buildSOM n = do
   ps <- replicateM 7 emptyPattern
   let g = hexHexGrid 2      -- The grid we'll use for our colour map
   let gm = lazyGridMap g ps -- a map from grid positions to colours
-  return $ defaultSOM gm 1 0.3 n
+  return $ defaultSOM gm 1 0.1 0.3 0.1 n
 
 vector2hex :: [Double] -> String
 vector2hex xs = '#' : foldr (showHex . round) "" xs

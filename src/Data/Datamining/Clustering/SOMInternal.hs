@@ -209,6 +209,8 @@ decayingGaussian r w0 tMax t d = r * s * exp (-(d'*d')/(2*w0*w0*s*s))
 --
 --   * 0 < wf << w0
 --
+--   * 0 < tf
+--
 --   where << means "is much smaller than" (not the Haskell @<<@
 --   operator!) 
 decayingGaussian2 :: Floating a => a -> a -> a -> a -> Int -> (Int -> Int -> a)

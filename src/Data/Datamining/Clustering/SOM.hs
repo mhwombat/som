@@ -34,28 +34,19 @@
 --
 -- * Kohonen, T. (1982). Self-organized formation of topologically 
 --   correct feature maps. Biological Cybernetics, 43 (1), 59–69.
---
--- * Rougier, N. & Boniface, Y. (2011). Dynamic self-organising map.
---   Neurocomputing, 74 (11), 1840-1847. 
 ------------------------------------------------------------------------
 
 module Data.Datamining.Clustering.SOM
   (
     -- * Construction
-    SOM,
-    defaultSOM,
-    customSOM,
-    decayingGaussian,
+    SOM(..),
+    DecayingGaussian(..),
     -- * Deconstruction
     toGridMap,
     -- * Advanced control
-    trainNeighbourhood,
-    incrementCounter,
-    counter,
-    setCounter
+    trainNeighbourhood
   ) where
 
-import Data.Datamining.Clustering.SOMInternal (SOM, defaultSOM,
-  customSOM, decayingGaussian, toGridMap, trainNeighbourhood,
-  incrementCounter, counter, setCounter)
+import Data.Datamining.Clustering.SOMInternal (SOM(..),
+  DecayingGaussian(..), toGridMap, trainNeighbourhood)
 

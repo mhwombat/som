@@ -114,8 +114,10 @@ justTrain
       G.Index (GM.BaseGrid gm p) ~ G.Index (gm p)) =>
      DSOM gm t p -> p -> DSOM gm (G.Index (gm p)) p
 justTrain s p = trainNeighbourhood s bmu p
-  where ds = GM.toList . GM.map (p `difference`) . sGridMap $ s
-        bmu = fst . minimumBy (comparing snd) $ ds
+  where ds = GM.toList . GM.map (p `difference`) $ sGridMap s
+        bmu = f ds
+        f [] = error "DSOM has no models"
+        f xs = fst $ minimumBy (comparing snd) xs
 
 instance
   (GM.GridMap gm p, k ~ G.Index (GM.BaseGrid gm p), Pattern p,
@@ -126,11 +128,13 @@ instance
   toList = GM.toList . sGridMap
   numModels = G.tileCount . sGridMap
   models = GM.elems . sGridMap
-  differences s p = GM.toList . GM.map (p `difference`) . sGridMap $ s
+  differences s p = GM.toList . GM.map (p `difference`) $ sGridMap s
   trainBatch s = foldl' justTrain s
   reportAndTrain s p = (bmu, ds, s')
     where ds = differences s p
-          bmu = fst . minimumBy (comparing snd) $ ds
+          bmu = f ds
+          f [] = error "DSOM has no models"
+          f xs = fst $ minimumBy (comparing snd) xs
           s' = trainNeighbourhood s bmu p
 
 

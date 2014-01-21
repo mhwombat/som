@@ -229,9 +229,9 @@ sizedSpecialDSOMandTargets :: Int -> Gen SpecialDSOMandTargets
 sizedSpecialDSOMandTargets n = do
   sideLength <- choose (1, min (n+1) 5) --avoid long tests
   let tileCount = 3*sideLength*(sideLength-1) + 1
-  let ps = map MkPattern . take tileCount $ [0,100..]
+  let ps = map MkPattern $ take tileCount [0,100..]
   r <- choose (0.001, 1)
-  let targets = map MkPattern . take tileCount $ [5,105..]
+  let targets = map MkPattern $ take tileCount [5,105..]
   return $ buildSpecialDSOMandTargets sideLength ps r targets
 
 instance Arbitrary SpecialDSOMandTargets where

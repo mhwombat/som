@@ -26,70 +26,72 @@ import Data.Datamining.Clustering.Classifier(Classifier, classify,
   numModels, train, trainBatch)
 import Data.Datamining.Clustering.SOMInternal
 
-import Control.Applicative ((<$>), (<*>))
+import Control.Applicative
 import Data.Function (on)
 import Data.List (sort)
 import Math.Geometry.Grid.Hexagonal (HexHexGrid, hexHexGrid)
 import Math.Geometry.GridMap ((!), GridMap)
 import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
+import System.Random (Random)
 import Test.Framework as TF (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose,
   Property, property, sized, suchThat, vectorOf)
 
-data GaussianArgs = GaussianArgs Double Double Int deriving Show
+-- data GaussianArgs = GaussianArgs Double Double Int deriving Show
 
 positive :: (Num a, Ord a, Arbitrary a) => Gen a
 positive = arbitrary `suchThat` (> 0)
 
-instance Arbitrary GaussianArgs where
-  arbitrary = GaussianArgs <$> choose (0,1) <*> positive <*> positive
+-- instance Arbitrary GaussianArgs where
+--   arbitrary = GaussianArgs <$> choose (0,1) <*> positive <*> positive
 
-prop_decayingGaussian_small_after_tMax :: GaussianArgs -> Property
-prop_decayingGaussian_small_after_tMax (GaussianArgs r w0 tMax) =
-  property $ decayingGaussian r w0 tMax (tMax+1) 0 < exp(-1)
+-- arbDecayingGaussian :: Gen (DecayingGaussian
+-- prop_decayingGaussian_small_after_tMax :: GaussianArgs -> Property
+-- prop_decayingGaussian_small_after_tMax (GaussianArgs r w0 tMax) =
+--   property $ decayingGaussian r w0 tMax (tMax+1) 0 < exp(-1)
 
-prop_decayingGaussian_small_far_from_bmu :: GaussianArgs -> Property
-prop_decayingGaussian_small_far_from_bmu (GaussianArgs r w0 tMax)
-  = property $
-      decayingGaussian r w0 tMax 0 (2*(ceiling w0)) < r * exp(-1)
+-- prop_decayingGaussian_small_far_from_bmu :: GaussianArgs -> Property
+-- prop_decayingGaussian_small_far_from_bmu (GaussianArgs r w0 tMax)
+--   = property $
+--       decayingGaussian r w0 tMax 0 (2*(ceiling w0)) < r * exp(-1)
 
-data GaussianArgs2 = GaussianArgs2 Double Double Double Double Int
-                       deriving Show
-
-instance Arbitrary GaussianArgs2 where
+instance
+  (Random a, Num a, Ord a, Arbitrary a)
+  => Arbitrary (DecayingGaussian a) where
   arbitrary = do
     r0 <- choose (0,1)
     rf <- choose (0,r0)
     w0 <- positive
     wf <- choose (0,w0)
     tf <- positive
-    return $ GaussianArgs2 r0 rf w0 wf tf
+    return $ DecayingGaussian r0 rf w0 wf tf
 
-prop_decayingGaussian2_starts_at_r0 :: GaussianArgs2 -> Property
-prop_decayingGaussian2_starts_at_r0 (GaussianArgs2 r0 rf w0 wf tf) =
-  property $ abs ((decayingGaussian2 r0 rf w0 wf tf 0 0) - r0) < 0.01
+prop_DecayingGaussian_starts_at_r0
+  :: DecayingGaussian Double -> Property
+prop_DecayingGaussian_starts_at_r0 f@(DecayingGaussian r0 _ _ _ _)
+  = property $ abs ((rate f 0 0) - r0) < 0.01
 
-prop_decayingGaussian2_starts_at_w0 :: GaussianArgs2 -> Property
-prop_decayingGaussian2_starts_at_w0 (GaussianArgs2 r0 rf w0 wf tf) =
-  property $
-    decayingGaussian2 r0 rf w0 wf tf 0 inside >= r0 * exp (-1)
-    && decayingGaussian2 r0 rf w0 wf tf 0 outside < r0 * exp (-1)
-  where inside = floor w0
-        outside = ceiling w0 + 1
+prop_DecayingGaussian_starts_at_w0
+  :: DecayingGaussian Double -> Property
+prop_DecayingGaussian_starts_at_w0 f@(DecayingGaussian r0 _ w0 _ _)
+  = property $
+    rate f 0 inside >= r0 * exp (-1) && rate f 0 outside < r0 * exp (-1)
+  where inside = w0 - 0.001
+        outside = w0 + 0.001
 
-prop_decayingGaussian2_decays_to_rf :: GaussianArgs2 -> Property
-prop_decayingGaussian2_decays_to_rf (GaussianArgs2 r0 rf w0 wf tf) =
-  property $ abs ((decayingGaussian2 r0 rf w0 wf tf tf 0) - rf) < 0.01
+prop_DecayingGaussian_decays_to_rf
+  :: DecayingGaussian Double -> Property
+prop_DecayingGaussian_decays_to_rf f@(DecayingGaussian _ rf _ _ tf)
+  = property $ abs ((rate f tf 0) - rf) < 0.01
 
-prop_decayingGaussian2_shrinks_to_wf :: GaussianArgs2 -> Property
-prop_decayingGaussian2_shrinks_to_wf (GaussianArgs2 r0 rf w0 wf tf) =
-  property $
-  decayingGaussian2 r0 rf w0 wf tf tf inside >= rf * exp (-1)
-    && decayingGaussian2 r0 rf w0 wf tf tf outside < rf * exp (-1)
-  where inside = floor wf
-        outside = ceiling wf + 1
-
+prop_DecayingGaussian_shrinks_to_wf
+  :: DecayingGaussian Double -> Property
+prop_DecayingGaussian_shrinks_to_wf f@(DecayingGaussian _ rf _ wf tf)
+  = property $
+    rate f tf inside >= rf * exp (-1) && rate f tf outside < rf * exp (-1)
+  where inside = wf - 0.001
+        outside = wf + 0.001
 
 newtype TestPattern = MkPattern Double deriving Show
 
@@ -138,24 +140,19 @@ approxEqual xs ys = fractionDiff xs ys <= 0.1
 --   the classifier can model. After running through the training set a
 --   few times, the classifier should be very accurate at identifying
 --   any of those @j@ vectors.
-data SOMandTargets = SOMandTargets (SOM (LGridMap HexHexGrid) (Int, Int)
-  TestPattern) [TestPattern] String
-
-instance Show SOMandTargets where
-  show (SOMandTargets _ _ desc) = desc
+data SOMandTargets = SOMandTargets (SOM (DecayingGaussian Double)
+  Int (LGridMap HexHexGrid) (Int, Int) TestPattern) [TestPattern]
+    deriving (Eq, Show)
 
 buildSOMandTargets
   :: Int -> [TestPattern] -> Double -> Double -> Double -> Double -> Int
      -> [TestPattern] -> SOMandTargets
 buildSOMandTargets len ps r0 rf w0 wf tf targets =
-  SOMandTargets s targets desc
+  SOMandTargets s targets
     where g = hexHexGrid len
           gm = lazyGridMap g ps
-          s = defaultSOM gm r0 rf w0 wf tf
-          desc = "buildSOMandTargets " ++ show len ++ " "
-            ++ show ps ++ " " ++ show r0 ++ " " ++ show rf ++ " "
-            ++ show w0 ++ " " ++ show wf ++ " " ++ show tf ++ " "
-            ++ show targets
+          tf' = fromIntegral tf
+          s = SOM gm (DecayingGaussian r0 rf w0 wf tf') 0
 
 sizedSOMandTargets :: Int -> Gen SOMandTargets
 sizedSOMandTargets n = do
@@ -178,29 +175,29 @@ instance Arbitrary SOMandTargets where
 --   from the BMU), and train a classifier once on one pattern, then all
 --   nodes should match the input vector.
 prop_global_instant_training_works :: SOMandTargets -> Property
-prop_global_instant_training_works (SOMandTargets s xs _) =
+prop_global_instant_training_works (SOMandTargets s xs) =
   property $ finalModels `approxEqual` expectedModels
     where x = head xs
           gm = toGridMap s :: LGridMap HexHexGrid TestPattern
-          f = (\_ _ -> 1) :: Int -> Int -> Metric TestPattern
-          s2 = customSOM gm f :: SOM (LGridMap HexHexGrid) (Int, Int) TestPattern
+          f = (ConstantFunction 1)
+          s2 = SOM gm f 0
           s3 = train s2 x
           finalModels = models s3 :: [TestPattern]
           expectedModels = replicate (numModels s) x :: [TestPattern]
 
 prop_training_reduces_error :: SOMandTargets -> Property
-prop_training_reduces_error (SOMandTargets s xs _) = errBefore /= 0 ==>
+prop_training_reduces_error (SOMandTargets s xs) = errBefore /= 0 ==>
   errAfter < errBefore
     where (bmu, s') = classifyAndTrain s x
           x = head xs
-          errBefore = abs $ toDouble x - toDouble (sGridMap s ! bmu)
-          errAfter = abs $ toDouble x - toDouble (sGridMap s' ! bmu)
+          errBefore = abs $ toDouble x - toDouble (gridMap s ! bmu)
+          errAfter = abs $ toDouble x - toDouble (gridMap s' ! bmu)
 
 --   Invoking @diffAndTrain f s p@ should give identical results to
 --   @(p `classify` s, train s f p)@.
 prop_classifyAndTrainEquiv :: SOMandTargets -> Property
-prop_classifyAndTrainEquiv (SOMandTargets s ps _) = property $
-  bmu == s `classify` p && sGridMap s1 == sGridMap s2
+prop_classifyAndTrainEquiv (SOMandTargets s ps) = property $
+  bmu == s `classify` p && gridMap s1 == gridMap s2
     where p = head ps
           (bmu, s1) = classifyAndTrain s p
           s2 = train s p
@@ -208,8 +205,8 @@ prop_classifyAndTrainEquiv (SOMandTargets s ps _) = property $
 --   Invoking @diffAndTrain f s p@ should give identical results to
 --   @(s `diff` p, train s f p)@.
 prop_diffAndTrainEquiv :: SOMandTargets -> Property
-prop_diffAndTrainEquiv (SOMandTargets s ps _) = property $
-  diffs == s `differences` p && sGridMap s1 == sGridMap s2
+prop_diffAndTrainEquiv (SOMandTargets s ps) = property $
+  diffs == s `differences` p && gridMap s1 == gridMap s2
     where p = head ps
           (diffs, s1) = diffAndTrain s p
           s2 = train s p
@@ -217,8 +214,8 @@ prop_diffAndTrainEquiv (SOMandTargets s ps _) = property $
 --   Invoking @trainNeighbourhood s (classify s p) p@ should give
 --   identical results to @train s p@.
 prop_trainNeighbourhoodEquiv :: SOMandTargets -> Property
-prop_trainNeighbourhoodEquiv (SOMandTargets s ps _) = property $
-  sGridMap s1 == sGridMap s2
+prop_trainNeighbourhoodEquiv (SOMandTargets s ps) = property $
+  gridMap s1 == gridMap s2
     where p = head ps
           s1 = trainNeighbourhood s (classify s p) p
           s2 = train s p
@@ -227,7 +224,7 @@ prop_trainNeighbourhoodEquiv (SOMandTargets s ps _) = property $
 --   several times over. So the resulting classifications should consist
 --   of the same integers in the same order, over and over.
 prop_batch_training_works :: SOMandTargets -> Property
-prop_batch_training_works (SOMandTargets s xs _) = property $
+prop_batch_training_works (SOMandTargets s xs) = property $
   classifications == (concat . replicate 5) firstSet
   where trainingSet = (concat . replicate 5) xs
         s' = trainBatch s trainingSet
@@ -237,32 +234,26 @@ prop_batch_training_works (SOMandTargets s xs _) = property $
 -- | Same as SOMandTargets, except that the initial models and training
 --   set are designed to ensure that a single node will NOT train to
 --   more than one pattern.
-data SpecialSOMandTargets = SpecialSOMandTargets (SOM (LGridMap HexHexGrid) (Int, Int)
-  TestPattern) [TestPattern] String
-
-instance Show SpecialSOMandTargets where
-  show (SpecialSOMandTargets _ _ desc) = desc
-
-stepFunction :: Double -> Int -> Int -> Double
-stepFunction r _ d = if d == 0 then r else 0.0
+data SpecialSOMandTargets = SpecialSOMandTargets (SOM
+  (StepFunction Double) Int (LGridMap HexHexGrid) (Int, Int)
+  TestPattern) [TestPattern]
+    deriving (Eq, Show)
 
 buildSpecialSOMandTargets
   :: Int -> [TestPattern] -> Double -> [TestPattern] -> SpecialSOMandTargets
 buildSpecialSOMandTargets len ps r targets =
-  SpecialSOMandTargets s targets desc
+  SpecialSOMandTargets s targets
     where g = hexHexGrid len
           gm = lazyGridMap g ps
-          s = customSOM gm (stepFunction r)
-          desc = "buildSpecialSOMandTargets " ++ show len ++ " "
-            ++ show ps ++ " " ++ show r ++ " " ++ show targets
+          s = SOM gm (StepFunction r) 0
 
 sizedSpecialSOMandTargets :: Int -> Gen SpecialSOMandTargets
 sizedSpecialSOMandTargets n = do
   sideLength <- choose (1, min (n+1) 5) --avoid long tests
   let tileCount = 3*sideLength*(sideLength-1) + 1
-  let ps = map MkPattern . take tileCount $ [0,100..]
+  let ps = map MkPattern $ take tileCount [0,100..]
   r <- choose (0.001, 1)
-  let targets = map MkPattern . take tileCount $ [5,105..]
+  let targets = map MkPattern $ take tileCount [5,105..]
   return $ buildSpecialSOMandTargets sideLength ps r targets
 
 instance Arbitrary SpecialSOMandTargets where
@@ -275,30 +266,25 @@ instance Arbitrary SpecialSOMandTargets where
 --   set are designed to ensure that a single node will NOT train to
 --   more than one pattern (which would render the test invalid).
 prop_batch_training_works2 :: SpecialSOMandTargets -> Property
-prop_batch_training_works2 (SpecialSOMandTargets s xs _) =
+prop_batch_training_works2 (SpecialSOMandTargets s xs) =
   errBefore /= 0 ==> errAfter < errBefore
     where s' = trainBatch s xs
           errBefore = absDiff (sort xs) (sort (models s))
           errAfter = absDiff (sort xs) (sort (models s'))
 
-data IncompleteSOMandTargets = IncompleteSOMandTargets (SOM (LGridMap HexHexGrid) (Int, Int)
-  TestPattern) [TestPattern] String
-
-instance Show IncompleteSOMandTargets where
-  show (IncompleteSOMandTargets _ _ desc) = desc
+data IncompleteSOMandTargets = IncompleteSOMandTargets (SOM
+  (DecayingGaussian Double) Int (LGridMap HexHexGrid) (Int, Int)
+  TestPattern) [TestPattern] deriving Show
 
 buildIncompleteSOMandTargets
   :: Int -> [TestPattern] -> Double -> Double -> Double -> Double -> Int
      -> [TestPattern] -> IncompleteSOMandTargets
 buildIncompleteSOMandTargets len ps r0 rf w0 wf tf targets =
-  IncompleteSOMandTargets s targets desc
+  IncompleteSOMandTargets s targets
     where g = hexHexGrid len
           gm = lazyGridMap g ps
-          s = defaultSOM gm r0 rf w0 wf tf
-          desc = "buildIncompleteSOMandTargets " ++ show len ++ " "
-            ++ show ps ++ " " ++ show r0 ++ " " ++ show rf ++ " "
-            ++ show w0 ++ " " ++ show wf ++ " " ++ show tf ++ " "
-            ++ show targets
+          tf' = fromIntegral tf
+          s = SOM gm (DecayingGaussian r0 rf w0 wf tf') 0
 
 -- | Same as sizedSOMandTargets, except some nodes don't have a value.
 sizedIncompleteSOMandTargets :: Int -> Gen IncompleteSOMandTargets
@@ -319,28 +305,24 @@ instance Arbitrary IncompleteSOMandTargets where
   arbitrary = sized sizedIncompleteSOMandTargets
 
 prop_can_train_incomplete_SOM :: IncompleteSOMandTargets -> Property
-prop_can_train_incomplete_SOM (IncompleteSOMandTargets s xs _) = errBefore /= 0 ==>
+prop_can_train_incomplete_SOM (IncompleteSOMandTargets s xs) = errBefore /= 0 ==>
   errAfter < errBefore
     where (bmu, s') = classifyAndTrain s x
           x = head xs
-          errBefore = abs $ toDouble x - toDouble (sGridMap s ! bmu)
-          errAfter = abs $ toDouble x - toDouble (sGridMap s' ! bmu)
+          errBefore = abs $ toDouble x - toDouble (gridMap s ! bmu)
+          errAfter = abs $ toDouble x - toDouble (gridMap s' ! bmu)
 
 test :: Test
 test = testGroup "QuickCheck Data.Datamining.Clustering.SOM"
   [
-    testProperty "prop_decayingGaussian_small_after_tMax"
-      prop_decayingGaussian_small_after_tMax,
-    testProperty "prop_decayingGaussian_small_far_from_bmu"
-      prop_decayingGaussian_small_far_from_bmu,
-    testProperty "prop_decayingGaussian2_starts_at_r0"
-      prop_decayingGaussian2_starts_at_r0,
-    testProperty "prop_decayingGaussian2_starts_at_w0"
-      prop_decayingGaussian2_starts_at_w0,
-    testProperty "prop_decayingGaussian2_decays_to_rf"
-      prop_decayingGaussian2_decays_to_rf,
-    testProperty "prop_decayingGaussian2_shrinks_to_wf"
-      prop_decayingGaussian2_shrinks_to_wf,
+    testProperty "prop_DecayingGaussian_starts_at_r0"
+      prop_DecayingGaussian_starts_at_r0,
+    testProperty "prop_DecayingGaussian_starts_at_w0"
+      prop_DecayingGaussian_starts_at_w0,
+    testProperty "prop_DecayingGaussian_decays_to_rf"
+      prop_DecayingGaussian_decays_to_rf,
+    testProperty "prop_DecayingGaussian_shrinks_to_wf"
+      prop_DecayingGaussian_shrinks_to_wf,
     testProperty "prop_global_instant_training_works"
       prop_global_instant_training_works,
     testProperty "prop_training_reduces_error"

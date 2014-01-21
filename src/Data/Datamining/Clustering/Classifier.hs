@@ -40,7 +40,9 @@ class Classifier (c :: * -> * -> *) k p where
   -- | @classify c target@ returns the index of the node in @c@ 
   --   whose model best matches the @target@.
   classify :: (Pattern p, Ord v, v ~ Metric p) => c k p -> p -> k
-  classify c p = fst . minimumBy (comparing snd) $ differences c p
+  classify c p = f $ differences c p
+    where f [] = error "classifier has no models"
+          f xs = fst $ minimumBy (comparing snd) xs
 
   -- | @'train' c target@ returns a modified copy
   --   of the classifier @c@ that has partially learned the @target@.

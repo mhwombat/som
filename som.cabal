@@ -1,5 +1,5 @@
 name:           som
-version:        6.5.1
+version:        7.2.1
 synopsis:       Self-Organising Maps
 description:    A Kohonen Self-organising Map (SOM) maps input patterns 
                 onto a regular grid (usually two-dimensional) where each
@@ -28,9 +28,6 @@ license-file:   LICENSE
 library
   hs-source-dirs:  src
   build-depends:   base ==4.*,
-                   base-unicode-symbols ==0.2.*,
-                   binary ==0.7.*,
-                   containers ==0.5.*,
                    grid ==7.*,
                    MonadRandom ==0.1.*
   ghc-options:     -Wall
@@ -49,7 +46,6 @@ test-suite som-tests
                    test-framework ==0.8.*,
                    som,
                    grid ==7.*,
-                   base-unicode-symbols ==0.2.*,
                    MonadRandom ==0.1.*,
                    random ==1.0.*
   hs-source-dirs:  test

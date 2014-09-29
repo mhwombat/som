@@ -64,7 +64,7 @@ data DecayingGaussian a = DecayingGaussian a a a a a
 instance (Floating a, Fractional a, Num a)
     => LearningFunction (DecayingGaussian a) where
   type LearningRate (DecayingGaussian a) = a
-  rate (DecayingGaussian r0 rf w0 wf tf) t d = r * exp (-(d*d)/(w*w))
+  rate (DecayingGaussian r0 rf w0 wf tf) t d = r * exp (-(d*d)/(2*w*w))
     where a = t/tf
           r = r0 * ((rf/r0)**a)
           w = w0 * ((wf/w0)**a)

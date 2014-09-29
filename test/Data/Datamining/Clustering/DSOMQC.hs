@@ -21,7 +21,7 @@ module Data.Datamining.Clustering.DSOMQC
 
 import Data.Datamining.Pattern (Pattern, Metric, difference,
   euclideanDistanceSquared, magnitudeSquared, makeSimilar)
-import Data.Datamining.Clustering.Classifier(Classifier, classify,
+import Data.Datamining.Clustering.Classifier(classify,
   classifyAndTrain, differences, diffAndTrain, models,
   numModels, train, trainBatch)
 import Data.Datamining.Clustering.DSOMInternal
@@ -30,7 +30,7 @@ import Control.Applicative ((<$>), (<*>))
 import Data.Function (on)
 import Data.List (sort)
 import Math.Geometry.Grid.Hexagonal (HexHexGrid, hexHexGrid)
-import Math.Geometry.GridMap ((!), GridMap)
+import Math.Geometry.GridMap ((!))
 import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
 import Test.Framework as TF (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)

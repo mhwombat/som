@@ -21,7 +21,7 @@ module Data.Datamining.Clustering.SOMQC
 
 import Data.Datamining.Pattern (Pattern, Metric, difference,
   euclideanDistanceSquared, magnitudeSquared, makeSimilar)
-import Data.Datamining.Clustering.Classifier(Classifier, classify,
+import Data.Datamining.Clustering.Classifier(classify,
   classifyAndTrain, differences, diffAndTrain, models,
   numModels, train, trainBatch)
 import Data.Datamining.Clustering.SOMInternal
@@ -30,7 +30,7 @@ import Control.Applicative
 import Data.Function (on)
 import Data.List (sort)
 import Math.Geometry.Grid.Hexagonal (HexHexGrid, hexHexGrid)
-import Math.Geometry.GridMap ((!), GridMap)
+import Math.Geometry.GridMap ((!))
 import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
 import System.Random (Random)
 import Test.Framework as TF (Test, testGroup)
@@ -76,7 +76,7 @@ prop_DecayingGaussian_starts_at_w0
   :: DecayingGaussian Double -> Property
 prop_DecayingGaussian_starts_at_w0 f@(DecayingGaussian r0 _ w0 _ _)
   = property $
-    rate f 0 inside >= r0 * exp (-1) && rate f 0 outside < r0 * exp (-1)
+    rate f 0 inside >= r0 * exp (-0.5) && rate f 0 outside < r0 * exp (-0.5)
   where inside = w0 - 0.001
         outside = w0 + 0.001
 
@@ -89,7 +89,7 @@ prop_DecayingGaussian_shrinks_to_wf
   :: DecayingGaussian Double -> Property
 prop_DecayingGaussian_shrinks_to_wf f@(DecayingGaussian _ rf _ wf tf)
   = property $
-    rate f tf inside >= rf * exp (-1) && rate f tf outside < rf * exp (-1)
+    rate f tf inside >= rf * exp (-0.5) && rate f tf outside < rf * exp (-0.5)
   where inside = wf - 0.001
         outside = wf + 0.001
 

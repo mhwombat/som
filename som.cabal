@@ -1,31 +1,30 @@
-name:           som
-version:        7.2.3
-synopsis:       Self-Organising Maps
-description:    A Kohonen Self-organising Map (SOM) maps input patterns 
-                onto a regular grid (usually two-dimensional) where each
-                node in the grid is a model of the input data, and does
-                so using a method which ensures that any topological
-                relationships within the input data are also represented
-                in the grid. This implementation supports the use of 
-                non-numeric patterns.
-                .
-                In layman's terms, a SOM can be useful when you you want
-                to discover the underlying structure of some data.
-                .
-                The userguide is available at 
-                <https://github.com/mhwombat/som/wiki>.
-category:       Math
-
-cabal-version:  >=1.8
-build-type:     Simple
-author:         Amy de Buitl&#233;ir
-copyright:      (c) Amy de Buitl&#233;ir 2010-2012
-homepage:       https://github.com/mhwombat/som
-bug-reports:    https://github.com/mhwombat/som/issues
-license:        BSD3
-stability:      experimental
-maintainer:     amy@nualeargais.ie
-license-file:   LICENSE
+Name:              som
+Version:           7.2.4
+Stability:         experimental
+Synopsis:          Self-Organising Maps.
+Description:       A Kohonen Self-organising Map (SOM) maps input patterns 
+                   onto a regular grid (usually two-dimensional) where each
+                   node in the grid is a model of the input data, and does
+                   so using a method which ensures that any topological
+                   relationships within the input data are also represented
+                   in the grid. This implementation supports the use of 
+                   non-numeric patterns.
+                   .
+                   In layman's terms, a SOM can be useful when you you want
+                   to discover the underlying structure of some data.
+                   .
+                   The userguide is available at 
+                   <https://github.com/mhwombat/som/wiki>.
+Category:          Math
+License:           BSD3
+License-file:      LICENSE
+Copyright:         (c) Amy de Buitléir 2010-2014
+Homepage:          https://github.com/mhwombat/som
+Bug-reports:       https://github.com/mhwombat/som/issues
+Author:            Amy de Buitléir
+Maintainer:        amy@nualeargais.ie
+Build-Type:        Simple
+Cabal-Version:     >=1.8
 
 source-repository head
   type:     git
@@ -34,7 +33,7 @@ source-repository head
 source-repository this
   type:     git
   location: https://github.com/mhwombat/som.git
-  tag:      7.2.3
+  tag:      7.2.4
 
 
 library

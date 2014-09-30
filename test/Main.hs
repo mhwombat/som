@@ -1,3 +1,15 @@
+------------------------------------------------------------------------
+-- |
+-- Module      :  Main
+-- Copyright   :  (c) Amy de Buitléir 2012-2014
+-- License     :  BSD-style
+-- Maintainer  :  amy@nualeargais.ie
+-- Stability   :  experimental
+-- Portability :  portable
+--
+-- Tests
+--
+------------------------------------------------------------------------
 {-# LANGUAGE UnicodeSyntax #-}
 module Main where
 

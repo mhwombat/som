@@ -22,7 +22,7 @@ module Data.Datamining.Clustering.SOMQC
 import Data.Datamining.Pattern (Pattern, Metric, difference,
   euclideanDistanceSquared, magnitudeSquared, makeSimilar)
 import Data.Datamining.Clustering.Classifier(classify,
-  classifyAndTrain, differences, diffAndTrain, models,
+  classifyAndTrain, reportAndTrain, differences, diffAndTrain, models,
   numModels, train, trainBatch)
 import Data.Datamining.Clustering.SOMInternal
 
@@ -231,6 +231,16 @@ prop_batch_training_works (SOMandTargets s xs) = property $
         classifications = map (classify s') trainingSet
         firstSet = take (length xs) classifications
 
+-- | WARNING: This can fail when two nodes are close enough in
+--   value so that after training they become identical.
+prop_classification_is_consistent
+  :: SOMandTargets -> Property
+prop_classification_is_consistent (SOMandTargets s (x:_))
+  = property $ bmu == bmu'
+  where (bmu, _, s') = reportAndTrain s x
+        (bmu', _, _) = reportAndTrain s' x
+prop_classification_is_consistent _ = error "Should not happen"
+
 -- | Same as SOMandTargets, except that the initial models and training
 --   set are designed to ensure that a single node will NOT train to
 --   more than one pattern.
@@ -332,6 +342,8 @@ test = testGroup "QuickCheck Data.Datamining.Clustering.SOM"
     testProperty "prop_diffAndTrainEquiv" prop_diffAndTrainEquiv,
     testProperty "prop_trainNeighbourhoodEquiv" prop_trainNeighbourhoodEquiv,
     testProperty "prop_batch_training_works" prop_batch_training_works,
+    testProperty "prop_classification_is_consistent"
+      prop_classification_is_consistent,
     testProperty "prop_batch_training_works2"
       prop_batch_training_works2,
     testProperty "prop_can_train_incomplete_SOM"

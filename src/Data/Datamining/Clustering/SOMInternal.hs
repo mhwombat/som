@@ -135,9 +135,16 @@ instance (F.Foldable gm, GM.GridMap gm p, G.Grid (GM.BaseGrid gm p))
   toGrid = GM.toGrid . gridMap
   toMap = GM.toMap . gridMap
   mapWithKey = error "Not implemented"
-  adjustWithKey f k s = s { gridMap=gm' }
+  delete k = withGridMap (GM.delete k)
+  adjustWithKey f k = withGridMap (GM.adjustWithKey f k)
+  insertWithKey f k v = withGridMap (GM.insertWithKey f k v)
+  alter f k = withGridMap (GM.alter f k)
+  filterWithKey f = withGridMap (GM.filterWithKey f)
+
+withGridMap :: (gm p -> gm p) -> SOM f t gm k p -> SOM f t gm k p
+withGridMap f s = s { gridMap=gm' }
     where gm = gridMap s
-          gm' = GM.adjustWithKey f k gm
+          gm' = f gm
 
 currentLearningFunction
   :: (LearningFunction f, Metric p ~ LearningRate f,
@@ -159,7 +166,7 @@ adjustNode g f target bmu k = makeSimilar target (f d)
 
 -- | Trains the specified node and the neighbourood around it to better
 --   match a target.
---   Most users should use @train@, which automatically determines
+--   Most users should use @'train'@, which automatically determines
 --   the BMU and trains it and its neighbourhood.
 trainNeighbourhood
   :: (Pattern p, G.Grid (gm p), GM.GridMap gm p,

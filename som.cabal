@@ -1,5 +1,5 @@
 Name:              som
-Version:           7.3.1
+Version:           7.5.0
 Stability:         experimental
 Synopsis:          Self-Organising Maps.
 Description:       A Kohonen Self-organising Map (SOM) maps input patterns 
@@ -33,14 +33,14 @@ source-repository head
 source-repository this
   type:     git
   location: https://github.com/mhwombat/som.git
-  tag:      7.3.1
+  tag:      7.5.0
 
 
 library
   hs-source-dirs:  src
   build-depends:   base ==4.*,
                    containers ==0.5.*,
-                   grid ==7.*,
+                   grid ==7.* && >=7.7,
                    MonadRandom ==0.3.*
   ghc-options:     -Wall
   exposed-modules: Data.Datamining.Clustering.SOM,
@@ -60,10 +60,14 @@ test-suite som-tests
                    test-framework ==0.8.*,
                    som,
                    containers ==0.5.*,
-                   grid ==7.*,
+                   grid ==7.* && >=7.7,
                    MonadRandom ==0.3.*,
                    random ==1.1.*
   hs-source-dirs:  test
   ghc-options:     -Wall
   main-is:         Main.hs
+  other-modules:   Data.Datamining.Clustering.SOMQC,
+                   Data.Datamining.Clustering.DSOMQC,
+                   Data.Datamining.Clustering.SSOMQC,
+                   Data.Datamining.PatternQC
 

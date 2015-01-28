@@ -36,42 +36,27 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose,
   Property, property, sized, suchThat, vectorOf)
 
--- data GaussianArgs = GaussianArgs Double Double Int deriving Show
-
 positive :: (Num a, Ord a, Arbitrary a) => Gen a
 positive = arbitrary `suchThat` (> 0)
 
--- instance Arbitrary GaussianArgs where
---   arbitrary = GaussianArgs <$> choose (0,1) <*> positive <*> positive
-
--- arbGaussian :: Gen (Gaussian
--- prop_decayingGaussian_small_after_tMax :: GaussianArgs -> Property
--- prop_decayingGaussian_small_after_tMax (GaussianArgs r w0 tMax) =
---   property $ decayingGaussian r w0 tMax (tMax+1) 0 < exp(-1)
-
--- prop_decayingGaussian_small_far_from_bmu :: GaussianArgs -> Property
--- prop_decayingGaussian_small_far_from_bmu (GaussianArgs r w0 tMax)
---   = property $
---       decayingGaussian r w0 tMax 0 (2*(ceiling w0)) < r * exp(-1)
-
 instance
   (Random a, Num a, Ord a, Arbitrary a)
-  => Arbitrary (Gaussian a) where
+  => Arbitrary (Exponential a) where
   arbitrary = do
     r0 <- choose (0,1)
-    rf <- choose (0,r0)
-    tf <- positive
-    return $ Gaussian r0 rf tf
+    d <- positive
+    return $ Exponential r0 d
 
-prop_Gaussian_starts_at_r0
-  :: Gaussian Double -> Property
-prop_Gaussian_starts_at_r0 f@(Gaussian r0 _ _)
-  = property $ abs ((rate f 0) - r0) < 0.01
+prop_Exponential_starts_at_r0
+  :: Exponential Double -> Property
+prop_Exponential_starts_at_r0 f@(Exponential r0 _)
+  = property $ abs (rate f 0 - r0) < 0.01
 
-prop_Gaussian_decays_to_rf
-  :: Gaussian Double -> Property
-prop_Gaussian_decays_to_rf f@(Gaussian _ rf tf)
-  = property $ abs ((rate f tf) - rf) < 0.01
+prop_Exponential_ge_0
+  :: Exponential Double -> Double -> Property
+prop_Exponential_ge_0 f t
+  = property $ rate f t' >= 0
+  where t' = abs t
 
 newtype TestPattern = MkPattern Double deriving Show
 
@@ -108,28 +93,25 @@ absDiff xs ys = euclideanDistanceSquared xs' ys'
 --   the classifier can model. After running through the training set a
 --   few times, the classifier should be very accurate at identifying
 --   any of those @j@ vectors.
-data SSOMandTargets = SSOMandTargets (SSOM (Gaussian Double)
+data SSOMandTargets = SSOMandTargets (SSOM (Exponential Double)
   Int Int TestPattern) [TestPattern]
     deriving (Eq, Show)
 
 buildSSOMandTargets
-  :: [TestPattern] -> Double -> Double -> Int -> [TestPattern]
-    -> SSOMandTargets
-buildSSOMandTargets ps r0 rf tf targets =
+  :: [TestPattern] -> Double -> Double -> [TestPattern] -> SSOMandTargets
+buildSSOMandTargets ps r0 d targets =
   SSOMandTargets s targets
     where gm = M.fromList . zip [0..] $ ps
-          tf' = fromIntegral tf
-          s = SSOM gm (Gaussian r0 rf tf') 0
+          s = SSOM gm (Exponential r0 d) 0
 
 sizedSSOMandTargets :: Int -> Gen SSOMandTargets
 sizedSSOMandTargets n = do
   let len = n + 1
   ps <- vectorOf len arbitrary
   r0 <- choose (0, 1)
-  rf <- choose (0, r0)
-  tf <- choose (1, 10)
+  d <- positive
   targets <- vectorOf len arbitrary
-  return $ buildSSOMandTargets ps r0 rf tf targets
+  return $ buildSSOMandTargets ps r0 d targets
 
 instance Arbitrary SSOMandTargets where
   arbitrary = sized sizedSSOMandTargets
@@ -193,27 +175,25 @@ prop_classification_is_consistent _ = error "Should not happen"
 --   set are designed to ensure that a single node will NOT train to
 --   more than one pattern.
 data SpecialSSOMandTargets = SpecialSSOMandTargets (SSOM
-  (Gaussian Double) Int Int TestPattern) [TestPattern]
+  (Exponential Double) Int Int TestPattern) [TestPattern]
     deriving (Eq, Show)
 
 buildSpecialSSOMandTargets
-  :: [TestPattern] -> Double -> Double -> Int -> [TestPattern]
+  :: [TestPattern] -> Double -> Double -> [TestPattern]
     -> SpecialSSOMandTargets
-buildSpecialSSOMandTargets ps r0 rf tf targets =
+buildSpecialSSOMandTargets ps r0 d targets =
   SpecialSSOMandTargets s targets
     where gm = M.fromList . zip [0..] $ ps
-          tf' = fromIntegral tf
-          s = SSOM gm (Gaussian r0 rf tf') 0
+          s = SSOM gm (Exponential r0 d) 0
 
 sizedSpecialSSOMandTargets :: Int -> Gen SpecialSSOMandTargets
 sizedSpecialSSOMandTargets n = do
   let len = n + 1
   let ps = map MkPattern $ take len [0,100..]
   r0 <- choose (0, 1)
-  rf <- choose (0, r0)
-  tf <- choose (1, 10)
+  d <- positive
   let targets = map MkPattern $ take len [5,105..]
-  return $ buildSpecialSSOMandTargets ps r0 rf tf targets
+  return $ buildSpecialSSOMandTargets ps r0 d targets
 
 instance Arbitrary SpecialSSOMandTargets where
   arbitrary = sized sizedSpecialSSOMandTargets
@@ -232,16 +212,15 @@ prop_batch_training_works2 (SpecialSSOMandTargets s xs) =
           errAfter = absDiff (sort xs) (sort (models s'))
 
 data IncompleteSSOMandTargets = IncompleteSSOMandTargets (SSOM
-  (Gaussian Double) Int Int TestPattern) [TestPattern] deriving Show
+  (Exponential Double) Int Int TestPattern) [TestPattern] deriving Show
 
 buildIncompleteSSOMandTargets
-  :: [TestPattern] -> Double -> Double -> Int -> [TestPattern]
+  :: [TestPattern] -> Double -> Double -> [TestPattern]
     -> IncompleteSSOMandTargets
-buildIncompleteSSOMandTargets ps r0 rf tf targets =
+buildIncompleteSSOMandTargets ps r0 d targets =
   IncompleteSSOMandTargets s targets
     where gm = M.fromList . zip [0..] $ ps
-          tf' = fromIntegral tf
-          s = SSOM gm (Gaussian r0 rf tf') 0
+          s = SSOM gm (Exponential r0 d) 0
 
 -- | Same as sizedSSOMandTargets, except some nodes don't have a value.
 sizedIncompleteSSOMandTargets :: Int -> Gen IncompleteSSOMandTargets
@@ -249,10 +228,9 @@ sizedIncompleteSSOMandTargets n = do
   let len = n + 1
   ps <- vectorOf len arbitrary
   r0 <- choose (0, 1)
-  rf <- choose (0, r0)
-  tf <- choose (1, 10)
+  d <- positive
   targets <- vectorOf len arbitrary
-  return $ buildIncompleteSSOMandTargets ps r0 rf tf targets
+  return $ buildIncompleteSSOMandTargets ps r0 d targets
 
 instance Arbitrary IncompleteSSOMandTargets where
   arbitrary = sized sizedIncompleteSSOMandTargets
@@ -268,10 +246,10 @@ prop_can_train_incomplete_SSOM (IncompleteSSOMandTargets s xs) = errBefore /= 0 
 test :: Test
 test = testGroup "QuickCheck Data.Datamining.Clustering.SSOM"
   [
-    testProperty "prop_Gaussian_starts_at_r0"
-      prop_Gaussian_starts_at_r0,
-    testProperty "prop_Gaussian_decays_to_rf"
-      prop_Gaussian_decays_to_rf,
+    testProperty "prop_Exponential_starts_at_r0"
+      prop_Exponential_starts_at_r0,
+    testProperty "prop_Exponential_ge_0"
+      prop_Exponential_ge_0,
     testProperty "prop_training_reduces_error"
       prop_training_reduces_error,
     testProperty "prop_classifyAndTrainEquiv"

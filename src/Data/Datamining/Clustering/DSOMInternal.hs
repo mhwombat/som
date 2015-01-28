@@ -67,9 +67,16 @@ instance
   toGrid = GM.toGrid . sGridMap
   toMap = GM.toMap . sGridMap
   mapWithKey = error "Not implemented"
-  adjustWithKey f k s = s { sGridMap=gm' }
+  delete k = withGridMap (GM.delete k)
+  adjustWithKey f k = withGridMap (GM.adjustWithKey f k)
+  insertWithKey f k v = withGridMap (GM.insertWithKey f k v)
+  alter f k = withGridMap (GM.alter f k)
+  filterWithKey f = withGridMap (GM.filterWithKey f)
+
+withGridMap :: (gm p -> gm p) -> DSOM gm k p -> DSOM gm k p
+withGridMap f s = s { sGridMap=gm' }
     where gm = sGridMap s
-          gm' = GM.adjustWithKey f k gm
+          gm' = f gm
 
 -- | Extracts the grid and current models from the DSOM.
 toGridMap :: GM.GridMap gm p => DSOM gm k p -> gm p

@@ -38,24 +38,24 @@ class LearningFunction f where
   rate :: f -> LearningRate f -> LearningRate f
 
 -- | A typical learning function for classifiers.
---   @'Gaussian' r0 rf tf@ returns a gaussian function. At time zero,
---   the learning rate is @r0@. Over time the learning rate tapers off,
---   until at time @tf@, the learning rate is @rf@. Normally the
---   parameters should be chosen such that:
+--   @'Exponential' r0 d@ returns a function to calculate the
+--   learning rate. At time zero, the learning rate is @r0@. Over time
+--   the learning rate decays exponentially. Normally the parameters
+--   should be chosen such that:
 --
---   * 0 < rf << r0 < 1
+--   * 0 < r0 < 1
 --
---   * 0 < tf
+--   * 0 < d
 --
 --   where << means "is much smaller than" (not the Haskell @<<@
 --   operator!)
-data Gaussian a = Gaussian a a a
+data Exponential a = Exponential a a
   deriving (Eq, Show, Generic)
 
 instance (Floating a, Fractional a, Num a)
-    => LearningFunction (Gaussian a) where
-  type LearningRate (Gaussian a) = a
-  rate (Gaussian r0 rf tf) t = r0 * ((rf/r0)**(t/tf))
+    => LearningFunction (Exponential a) where
+  type LearningRate (Exponential a) = a
+  rate (Exponential r0 d) t = r0 * exp (-d*t)
 
 -- | A Simplified Self-Organising Map (SSOM).
 data SSOM f t k p = SSOM
@@ -77,7 +77,7 @@ toMap :: SSOM f t k p -> M.Map k p
 toMap = sMap
 
 -- | Trains the specified node to better match a target.
---   Most users should use @train@, which automatically determines
+--   Most users should use @'train'@, which automatically determines
 --   the BMU and trains it.
 trainNode
   :: (Pattern p, LearningFunction f, Metric p ~ LearningRate f,

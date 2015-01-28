@@ -34,7 +34,7 @@ module Data.Datamining.Clustering.SSOM
   (
     -- * Construction
     SSOM(..),
-    Gaussian(..),
+    Exponential(..),
     -- * Deconstruction
     toMap,
     -- * Advanced control
@@ -42,5 +42,5 @@ module Data.Datamining.Clustering.SSOM
   ) where
 
 import Data.Datamining.Clustering.SSOMInternal (SSOM(..),
-  Gaussian(..), toMap, trainNode)
+  Exponential(..), toMap, trainNode)
 

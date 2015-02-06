@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Datamining.Clustering.SSOM
--- Copyright   :  (c) Amy de Buitléir 2012-2014
+-- Copyright   :  (c) Amy de Buitléir 2012-2015
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental
@@ -34,13 +34,13 @@ module Data.Datamining.Clustering.SSOM
   (
     -- * Construction
     SSOM(..),
-    Exponential(..),
     -- * Deconstruction
     toMap,
+    -- * Learning functions
+    exponential,
     -- * Advanced control
-    trainNode,
+    trainNode
   ) where
 
-import Data.Datamining.Clustering.SSOMInternal (SSOM(..),
-  Exponential(..), toMap, trainNode)
+import Data.Datamining.Clustering.SSOMInternal
 

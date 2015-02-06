@@ -1,5 +1,5 @@
 Name:              som
-Version:           7.5.0
+Version:           8.0.0
 Stability:         experimental
 Synopsis:          Self-Organising Maps.
 Description:       A Kohonen Self-organising Map (SOM) maps input patterns 
@@ -18,7 +18,7 @@ Description:       A Kohonen Self-organising Map (SOM) maps input patterns
 Category:          Math
 License:           BSD3
 License-file:      LICENSE
-Copyright:         (c) Amy de Buitléir 2010-2014
+Copyright:         (c) Amy de Buitléir 2010-2015
 Homepage:          https://github.com/mhwombat/som
 Bug-reports:       https://github.com/mhwombat/som/issues
 Author:            Amy de Buitléir
@@ -33,7 +33,7 @@ source-repository head
 source-repository this
   type:     git
   location: https://github.com/mhwombat/som.git
-  tag:      7.5.0
+  tag:      8.0.0
 
 
 library

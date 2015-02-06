@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Datamining.Clustering.SOM
--- Copyright   :  (c) Amy de Buitléir 2012-2014
+-- Copyright   :  (c) Amy de Buitléir 2012-2015
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental
@@ -23,16 +23,13 @@
 module Data.Datamining.Clustering.DSOM
   (
     -- * Construction
-    DSOM,
-    defaultDSOM,
-    customDSOM,
-    rougierLearningFunction,
+    DSOM(..),
     -- * Deconstruction
     toGridMap,
+    -- * Learning functions
+    rougierLearningFunction,
     -- * Advanced control
     trainNeighbourhood
   ) where
 
-import Data.Datamining.Clustering.DSOMInternal (DSOM, defaultDSOM,
-  customDSOM, rougierLearningFunction, toGridMap, trainNeighbourhood)
-
+import Data.Datamining.Clustering.DSOMInternal

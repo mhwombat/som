@@ -1,4 +1,8 @@
-{-# LANGUAGE TypeFamilies, FlexibleInstances, FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 {-
 
@@ -12,14 +16,14 @@ The picture at <https://github.com/mhwombat/som/blob/master/examples/somTutorial
 will make this clearer.
 -}
 
-import Codec.Image.DevIL (ilInit, readImage)
 import Control.Monad (forM_, unless, replicateM)
 import Control.Monad.Random (evalRandIO, Rand, RandomGen, getRandomRs)
 import Data.Datamining.Pattern (adjustVector, 
-  euclideanDistanceSquared, Pattern(..))
-import Data.Datamining.Clustering.SOM (SOM, defaultSOM, toGridMap)
+  euclideanDistanceSquared)
+import Data.Datamining.Clustering.SOM (SOM(..), toGridMap, decayingGaussian)
 import Data.Datamining.Clustering.Classifier (Classifier, train, trainBatch)
 import Data.List (foldl')
+import Data.List.Split (chunksOf)
 import Data.Word (Word8)
 import Data.Array.IArray (elems)
 import Data.Array.Unboxed (UArray)
@@ -34,12 +38,14 @@ import Numeric (showHex)
 import System.Directory (doesFileExist)
 
 -- These imports are for the graphics
+import Codec.Picture (readImage, DynamicImage(ImageRGBA8), PixelRGBA8,
+  imageData)
 import Data.Colour.SRGB (sRGB)
+import Data.Vector.Storable (toList)
 import Diagrams.Prelude
-import Diagrams.Backend.SVG -- from diagrams-svg
+import Diagrams.Core (V)
+import Diagrams.Backend.Cairo (B, Cairo, renderCairo) -- from diagrams-cairo
 import qualified Data.ByteString.Lazy as BS
-import Text.Blaze.Svg.Renderer.Utf8 (renderSvg) -- from blaze-svg
-import Text.Blaze.Svg.Internal (Svg) -- from blaze-svg
 import Diagrams.TwoD.Text (Text) -- from diagrams-lib
 
 inputFile :: FilePath
@@ -47,40 +53,44 @@ inputFile = "Sample.png"
 
 main :: IO ()
 main = do
-  -- Initialise the image library
-  ilInit
   -- Read the image
   xs <- readPixels inputFile
   -- Build a self-organising map (SOM) initialised with small random values.
-  c <- evalRandIO $ buildSOM (length xs) :: IO (SOM (LGridMap HexHexGrid) k Pixel)
+  c <- evalRandIO $ buildSOM (length xs)
   -- Train it with the vectors from the image.
   let c2 = foldl' train c xs
   -- Write the result.
   print . GM.toList . GM.map vector2hex . toGridMap $ c2
   -- Create an image file showing the results
-  BS.writeFile "map.svg" . renderSvg . drawColourMap . toGridMap $ c2
+  let ss = mkSizeSpec (Just 500) Nothing
+  let diagram = drawColourMap . toGridMap $ c2
+  renderCairo "map.svg" ss diagram
   putStrLn "The output image is map.svg"
 
 readPixels :: FilePath -> IO [Pixel]
 readPixels f = do
   fileExists <- doesFileExist inputFile
   unless fileExists $ error ("Can't find file: " ++ inputFile)
-  img <- readImage inputFile
+  (Right (ImageRGBA8 img)) <- readImage inputFile
   -- Convert the image data to vectors and shuffle them. (If we didn't shuffle
   -- them, the colours at the bottom right of the image would take precedence
   -- over those at the top left.)
-  evalRandIO $ shuffle $ img2vectors img
+  evalRandIO . shuffle . img2vectors . imageData $ img
 
 -- Build a classifier initialised with random values.
 -- I used random values here just to emphasise that the map organises
 -- itself. In practice, however, you could choose initial values that
 -- are spread evenly over the expected range of input values.
-buildSOM :: RandomGen r => Int -> Rand r (SOM (LGridMap HexHexGrid) k Pixel)
+buildSOM
+  :: RandomGen r
+    => Int -> Rand r (SOM Double Double (LGridMap HexHexGrid) Double (Int, Int) Pixel)
 buildSOM n = do
   ps <- replicateM 7 emptyPattern
   let g = hexHexGrid 2      -- The grid we'll use for our colour map
   let gm = lazyGridMap g ps -- a map from grid positions to colours
-  return $ defaultSOM gm 1 0.1 0.3 0.1 n
+  let n' = fromIntegral n
+  let lrf = decayingGaussian 1 0.1 0.3 0.1 n' -- learning rate function
+  return $ SOM gm lrf euclideanDistanceSquared adjustVector 0
 
 vector2hex :: [Double] -> String
 vector2hex xs = '#' : foldr (showHex . round) "" xs
@@ -101,7 +111,7 @@ shuffle xs = do
   return (elems ar)
 
 -- We use Doubles instead of Word8s to represent the red, green, blue and 
--- alpha components of a pixel because we're goiing to multiply them by 
+-- alpha components of a pixel because we're going to multiply them by 
 -- fractions.
 type Pixel = [Double]
 
@@ -112,37 +122,25 @@ emptyPattern = do
   xs <- getRandomRs (0.0, 255.0)
   return (take 3 xs)
 
-instance Pattern Pixel where
-  type Metric Pixel = Double
-  difference = euclideanDistanceSquared
-  makeSimilar = adjustVector
-
 --
 -- The code below converts the image data into a sequence of vectors. There's
 -- a vector for each pixel in the image. Each vector represents one pixel,
 -- and consists of three numbers between 0 and 255, for the red, green, 
--- and blue components of that pixel. (We're omitting the alpha component.)
+-- and blue components of that pixel. (We're skipping the alpha component.)
 --
 
-img2vectors :: UArray (Int, Int, Int) Word8 -> [Pixel]
-img2vectors img = map (take 3) $ chunksOf 4 $ map fromIntegral $ elems img
-
-chunksOf :: Int -> [a] -> [[a]]
-chunksOf n xs = fst $ takeNextChunk n ([],xs)
-
-takeNextChunk :: Int -> ([[a1]], [a1]) -> ([[a1]], [a])
-takeNextChunk _ (as,[]) = (as,[])
-takeNextChunk n (as,xs) = takeNextChunk n (a:as,xs')
-  where (a,xs') = splitAt n xs
+img2vectors img = map (take 3) . chunksOf 4 . map fromIntegral . toList $ img
 
 --
 -- The code below generates the output image
 --
 
-drawColourMap :: (GM.GridMap gm Pixel, 
-  Index (GM.BaseGrid gm Pixel) ~ (Int, Int)) =>
-    gm Pixel -> Svg
-drawColourMap c = renderDia SVG (SVGOptions sizeSpec) (pad 1.1 diagram)
+-- drawColourMap
+--   :: (GM.GridMap gm Pixel, Index (GM.BaseGrid gm Pixel) ~ (Int, Int),
+--     Renderable Text b, Renderable (Path R2) b, Backend b R2,
+--     Num (Measure R2), Fractional (Measure R2))
+--       => gm Pixel -> Diagram b R2
+drawColourMap c = pad 1.1 diagram
   where (centre:outer) = map drawHexagon . GM.toList $ c
         directions = iterate (rotateBy (1/6)) unitX
         ring = zip directions outer
@@ -151,12 +149,12 @@ drawColourMap c = renderDia SVG (SVGOptions sizeSpec) (pad 1.1 diagram)
 sizeSpec :: SizeSpec2D
 sizeSpec = Dims 400.0 400.0
 
-drawHexagon
-  :: (Renderable Text b, Renderable (Path R2) b, Backend b R2) =>
-     ((Int, Int), Pixel) -> Diagram b R2
+-- drawHexagon
+--   :: (Renderable Text b, Renderable (Path R2) b, Backend b R2,
+--     Num (Measure R2), Fractional (Measure R2))
+--       => ((Int, Int), Pixel) -> Diagram b R2
 drawHexagon (index, rgb@(r:g:b:_)) = 
-  mconcat [ label,
-            hexagon 20 # lw 0.02 # fc colour # rotateBy (1/4) ]
+  mconcat [ label, hexagon 20 # lw 0.02 # fc colour # rotateBy (1/4) ]
   where label = (text (show index) # fc white # fontSize 5 ||| strutY 5)
                 ===
                 (text (vector2hex rgb) # fc white # fontSize 5 ||| strutY 5)

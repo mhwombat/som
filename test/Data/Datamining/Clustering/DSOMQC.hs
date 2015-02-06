@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Datamining.Clustering.DSOMQC
--- Copyright   :  (c) Amy de Buitléir 2012-2014
+-- Copyright   :  (c) Amy de Buitléir 2012-2015
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental
@@ -19,23 +19,23 @@ module Data.Datamining.Clustering.DSOMQC
     test
   ) where
 
-import Data.Datamining.Pattern (Pattern, Metric, difference,
-  euclideanDistanceSquared, magnitudeSquared, makeSimilar)
+import Data.Datamining.Pattern (euclideanDistanceSquared,
+  magnitudeSquared, adjustNum, absDifference)
 import Data.Datamining.Clustering.Classifier(classify,
   classifyAndTrain, differences, diffAndTrain, models,
   numModels, train, trainBatch)
 import Data.Datamining.Clustering.DSOMInternal
 
 import Control.Applicative ((<$>), (<*>))
-import Data.Function (on)
 import Data.List (sort)
+import Math.Geometry.Grid (size)
 import Math.Geometry.Grid.Hexagonal (HexHexGrid, hexHexGrid)
-import Math.Geometry.GridMap ((!))
+import Math.Geometry.GridMap ((!), elems)
 import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
 import Test.Framework as TF (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose,
-  Property, property, sized, suchThat, vectorOf)
+  Property, property, sized, suchThat, vectorOf, shrink)
 
 positive :: (Num a, Ord a, Arbitrary a) => Gen a
 positive = arbitrary `suchThat` (> 0)
@@ -64,128 +64,127 @@ prop_rougierFunction_r_if_inelastic :: RougierArgs -> Property
 prop_rougierFunction_r_if_inelastic (RougierArgs r _ _ _ _) =
   property $ rougierLearningFunction r 1.0 1.0 1.0 0 == r
 
-newtype TestPattern = MkPattern Double deriving Show
+fractionDiff :: [Double] -> [Double] -> Double
+fractionDiff xs ys = if denom == 0 then 0 else d / denom
+  where d = sqrt $ euclideanDistanceSquared xs ys
+        denom = max xMag yMag
+        xMag = sqrt $ magnitudeSquared xs
+        yMag = sqrt $ magnitudeSquared ys
 
-instance Eq TestPattern where
-  (==) = (==) `on` toDouble
-
-instance Ord TestPattern where
-  compare = compare `on` toDouble
-
-instance Pattern TestPattern where
-  type Metric TestPattern = Double
-  difference (MkPattern a) (MkPattern b) = abs (a - b)
-  makeSimilar orig@(MkPattern a) r (MkPattern b)
-    | r < 0     = error "Negative learning rate"
-    | r > 1     = error "Learning rate > 1"
-    | r == 1     = orig
-    | otherwise = MkPattern (b + delta)
-        where diff = a - b
-              delta = r*diff
-
-instance Arbitrary TestPattern where
-  arbitrary = MkPattern <$> choose (0,1)
-
-toDouble :: TestPattern -> Double
-toDouble (MkPattern a) = a
-
-absDiff :: [TestPattern] -> [TestPattern] -> Double
-absDiff xs ys = euclideanDistanceSquared xs' ys'
+approxEqual :: [TestPattern] -> [TestPattern] -> Bool
+approxEqual xs ys = fractionDiff xs' ys' <= 0.1
   where xs' = map toDouble xs
         ys' = map toDouble ys
 
-fractionDiff :: [TestPattern] -> [TestPattern] -> Double
-fractionDiff xs ys = if denom == 0 then 0 else d / denom
-  where d = sqrt $ euclideanDistanceSquared xs' ys'
-        denom = max xMag yMag
-        xMag = sqrt $ magnitudeSquared xs'
-        yMag = sqrt $ magnitudeSquared ys'
-        xs' = map toDouble xs
-        ys' = map toDouble ys
+-- We need to ensure that the absolute value of the difference
+-- between any two test patterns is on the unit interval.
 
-approxEqual :: [TestPattern] -> [TestPattern] -> Bool
-approxEqual xs ys = fractionDiff xs ys <= 0.1
+newtype TestPattern = TestPattern {toDouble :: Double}
+ deriving ( Eq, Ord, Show, Read)
 
-data DSOMandTargets = DSOMandTargets (DSOM (LGridMap HexHexGrid) (Int, Int)
-  TestPattern) [TestPattern] String
+instance Arbitrary TestPattern where
+  arbitrary = fmap TestPattern $ choose (0,1)
+  shrink (TestPattern x) =
+    [ TestPattern x' | x' <- shrink x, x' >= 0, x' <= 1]
 
-instance Show DSOMandTargets where
-  show (DSOMandTargets _ _ desc) = desc
+testPatternDiff :: TestPattern -> TestPattern -> Double
+testPatternDiff (TestPattern a) (TestPattern b) = absDifference a b
 
-buildDSOMandTargets
-  :: Int -> [TestPattern] -> Double -> Double -> [TestPattern] -> DSOMandTargets
-buildDSOMandTargets len ps r p targets = DSOMandTargets s targets desc
+adjustTestPattern :: TestPattern -> Double -> TestPattern -> TestPattern
+adjustTestPattern (TestPattern target) r (TestPattern x)
+  = TestPattern $ adjustNum target r x
+
+-- | A classifier and a training set. The training set will consist of
+--   @j@ vectors of equal length, where @j@ is the number of patterns
+--   the classifier can model. After running through the training set a
+--   few times, the classifier should be very accurate at identifying
+--   any of those @j@ vectors.
+data DSOMTestData
+  = DSOMTestData
+    {
+      som1 :: DSOM (LGridMap HexHexGrid) Double (Int, Int) TestPattern,
+      params1 :: RougierArgs,
+      trainingSet1 :: [TestPattern]
+    }
+
+instance Show DSOMTestData where
+  show s = "buildDSOMTestData " ++ show (size . gridMap . som1 $ s)
+    ++ " " ++ show (elems . gridMap . som1 $ s)
+    ++ " (" ++ show (params1 s) 
+    ++ ") " ++ show (trainingSet1 s) 
+
+buildDSOMTestData
+  :: Int -> [TestPattern] -> RougierArgs -> [TestPattern] -> DSOMTestData
+buildDSOMTestData len ps rp@(RougierArgs r p _ _ _) targets =
+  DSOMTestData s rp targets
     where g = hexHexGrid len
           gm = lazyGridMap g ps
-          s = defaultDSOM gm r p
-          desc = "buildDSOMandTargets " ++ show len ++ " " ++ show ps ++
-            " " ++ show r ++ " " ++ show p ++ " " ++ show targets
+          fr = rougierLearningFunction r p
+          s = DSOM gm fr testPatternDiff adjustTestPattern
 
 -- | Generate a classifier and a training set. The training set will
 --   consist @j@ vectors of equal length, where @j@ is the number of
 --   patterns the classifier can model. After running through the
 --   training set a few times, the classifier should be very accurate at
 --   identifying any of those @j@ vectors.
-sizedDSOMandTargets :: Int -> Gen DSOMandTargets
-sizedDSOMandTargets n = do
+sizedDSOMTestData :: Int -> Gen DSOMTestData
+sizedDSOMTestData n = do
   sideLength <- choose (1, min (n+1) 5) --avoid long tests
   let tileCount = 3*sideLength*(sideLength-1) + 1
   let numberOfPatterns = tileCount
   ps <- vectorOf numberOfPatterns arbitrary
-  r <- choose (0, 1)
-  p <- choose (0, 1)
+  rp <- arbitrary
   targets <- vectorOf numberOfPatterns arbitrary
-  return $ buildDSOMandTargets sideLength ps r p targets
+  return $ buildDSOMTestData sideLength ps rp targets
 
-instance Arbitrary DSOMandTargets where
-  arbitrary = sized sizedDSOMandTargets
+instance Arbitrary DSOMTestData where
+  arbitrary = sized sizedDSOMTestData
 
 -- | If we use a fixed learning rate of one (regardless of the distance
 --   from the BMU), and train a classifier once on one pattern, then all
 --   nodes should match the input vector.
-prop_global_instant_training_works :: DSOMandTargets -> Property
-prop_global_instant_training_works (DSOMandTargets s xs _) =
+prop_global_instant_training_works :: DSOMTestData -> Property
+prop_global_instant_training_works (DSOMTestData s _ xs) =
   property $ finalModels `approxEqual` expectedModels
     where x = head xs
           gm = toGridMap s :: LGridMap HexHexGrid TestPattern
-          f = (\_ _ _ -> 1) 
-              :: Metric TestPattern -> Metric TestPattern -> Metric TestPattern -> Metric TestPattern
-          s2 = customDSOM gm f :: DSOM (LGridMap HexHexGrid) (Int, Int) TestPattern
+          f _ _ _ = 1
+          s2 = DSOM gm f testPatternDiff adjustTestPattern
           s3 = train s2 x
           finalModels = models s3 :: [TestPattern]
           expectedModels = replicate (numModels s) x :: [TestPattern]
 
-prop_training_works :: DSOMandTargets -> Property
-prop_training_works (DSOMandTargets s xs _) = errBefore /= 0 ==>
+prop_training_works :: DSOMTestData -> Property
+prop_training_works (DSOMTestData s _ xs) = errBefore /= 0 ==>
   errAfter < errBefore
     where (bmu, s') = classifyAndTrain s x
           x = head xs
-          errBefore = abs $ toDouble x - toDouble (sGridMap s ! bmu)
-          errAfter = abs $ toDouble x - toDouble (sGridMap s' ! bmu)
+          errBefore = testPatternDiff x (gridMap s ! bmu)
+          errAfter = testPatternDiff x (gridMap s' ! bmu)
 
 --   Invoking @diffAndTrain f s p@ should give identical results to
 --   @(p `classify` s, train s f p)@.
-prop_classifyAndTrainEquiv :: DSOMandTargets -> Property
-prop_classifyAndTrainEquiv (DSOMandTargets s ps _) = property $
-  bmu == s `classify` p && sGridMap s1 == sGridMap s2
+prop_classifyAndTrainEquiv :: DSOMTestData -> Property
+prop_classifyAndTrainEquiv (DSOMTestData s _ ps) = property $
+  bmu == s `classify` p && gridMap s1 == gridMap s2
     where p = head ps
           (bmu, s1) = classifyAndTrain s p
           s2 = train s p
 
 --   Invoking @diffAndTrain f s p@ should give identical results to
 --   @(s `diff` p, train s f p)@.
-prop_diffAndTrainEquiv :: DSOMandTargets -> Property
-prop_diffAndTrainEquiv (DSOMandTargets s ps _) = property $
-  diffs == s `differences` p && sGridMap s1 == sGridMap s2
+prop_diffAndTrainEquiv :: DSOMTestData -> Property
+prop_diffAndTrainEquiv (DSOMTestData s _ ps) = property $
+  diffs == s `differences` p && gridMap s1 == gridMap s2
     where p = head ps
           (diffs, s1) = diffAndTrain s p
           s2 = train s p
 
 --   Invoking @trainNeighbourhood s (classify s p) p@ should give
 --   identical results to @train s p@.
-prop_trainNeighbourhoodEquiv :: DSOMandTargets -> Property
-prop_trainNeighbourhoodEquiv (DSOMandTargets s ps _) = property $
-  sGridMap s1 == sGridMap s2
+prop_trainNeighbourhoodEquiv :: DSOMTestData -> Property
+prop_trainNeighbourhoodEquiv (DSOMTestData s _ ps) = property $
+  gridMap s1 == gridMap s2
     where p = head ps
           s1 = trainNeighbourhood s (classify s p) p
           s2 = train s p
@@ -193,49 +192,56 @@ prop_trainNeighbourhoodEquiv (DSOMandTargets s ps _) = property $
 -- | The training set consists of the same vectors in the same order,
 --   several times over. So the resulting classifications should consist
 --   of the same integers in the same order, over and over.
-prop_batch_training_works :: DSOMandTargets -> Property
-prop_batch_training_works (DSOMandTargets s xs _) = property $
+prop_batch_training_works :: DSOMTestData -> Property
+prop_batch_training_works (DSOMTestData s _ xs) = property $
   classifications == (concat . replicate 5) firstSet
   where trainingSet = (concat . replicate 5) xs
         s' = trainBatch s trainingSet
         classifications = map (classify s') trainingSet
         firstSet = take (length xs) classifications
 
-data SpecialDSOMandTargets = SpecialDSOMandTargets (DSOM (LGridMap HexHexGrid) (Int, Int)
-  TestPattern) [TestPattern] String
+data SpecialDSOMTestData
+  = SpecialDSOMTestData
+    {
+      som2 :: DSOM (LGridMap HexHexGrid) Double (Int, Int) TestPattern,
+      params2 :: Double,
+      trainingSet2 :: [TestPattern]
+    }
 
-instance Show SpecialDSOMandTargets where
-  show (SpecialDSOMandTargets _ _ desc) = desc
+instance Show SpecialDSOMTestData where
+  show s = "buildDSOMTestData " ++ show (size . gridMap . som2 $ s)
+    ++ " " ++ show (elems . gridMap . som2 $ s)
+    ++ " (" ++ show (params2 s) 
+    ++ ") " ++ show (trainingSet2 s) 
 
 stepFunction :: Double -> Double -> Double -> Double -> Double
 stepFunction r _ _ d = if d == 0 then r else 0.0
 
-buildSpecialDSOMandTargets
-  :: Int -> [TestPattern] -> Double -> [TestPattern] -> SpecialDSOMandTargets
-buildSpecialDSOMandTargets len ps r targets =
-  SpecialDSOMandTargets s targets desc
+buildSpecialDSOMTestData
+  :: Int -> [TestPattern] -> Double -> [TestPattern] -> SpecialDSOMTestData
+buildSpecialDSOMTestData len ps r targets =
+  SpecialDSOMTestData s r targets
     where g = hexHexGrid len
           gm = lazyGridMap g ps
-          s = customDSOM gm (stepFunction r)
-          desc = "buildSpecialDSOMandTargets " ++ show len ++ " "
-            ++ show ps ++ " " ++ show r ++ " " ++ show targets
+          fr = stepFunction r
+          s = DSOM gm fr testPatternDiff adjustTestPattern
 
 -- | Generate a classifier and a training set. The training set will
 --   consist @j@ vectors of equal length, where @j@ is the number of
 --   patterns the classifier can model. After running through the
 --   training set a few times, the classifier should be very accurate at
 --   identifying any of those @j@ vectors.
-sizedSpecialDSOMandTargets :: Int -> Gen SpecialDSOMandTargets
-sizedSpecialDSOMandTargets n = do
+sizedSpecialDSOMTestData :: Int -> Gen SpecialDSOMTestData
+sizedSpecialDSOMTestData n = do
   sideLength <- choose (1, min (n+1) 5) --avoid long tests
   let tileCount = 3*sideLength*(sideLength-1) + 1
-  let ps = map MkPattern $ take tileCount [0,100..]
+  let ps = map TestPattern $ take tileCount [0,100..]
   r <- choose (0.001, 1)
-  let targets = map MkPattern $ take tileCount [5,105..]
-  return $ buildSpecialDSOMandTargets sideLength ps r targets
+  let targets = map TestPattern $ take tileCount [5,105..]
+  return $ buildSpecialDSOMTestData sideLength ps r targets
 
-instance Arbitrary SpecialDSOMandTargets where
-  arbitrary = sized sizedSpecialDSOMandTargets
+instance Arbitrary SpecialDSOMTestData where
+  arbitrary = sized sizedSpecialDSOMTestData
 
 -- | If we train a classifier once on a set of patterns, where the
 --   number of patterns in the set is equal to the number of nodes in
@@ -243,12 +249,12 @@ instance Arbitrary SpecialDSOMandTargets where
 --   representation of the training set. The initial models and training
 --   set are designed to ensure that a single node will NOT train to
 --   more than one pattern (which would render the test invalid).
-prop_batch_training_works2 :: SpecialDSOMandTargets -> Property
-prop_batch_training_works2 (SpecialDSOMandTargets s xs _) =
+prop_batch_training_works2 :: SpecialDSOMTestData -> Property
+prop_batch_training_works2 (SpecialDSOMTestData s _ xs) =
   errBefore /= 0 ==> errAfter < errBefore
     where s' = trainBatch s xs
-          errBefore = absDiff (sort xs) (sort (models s))
-          errAfter = absDiff (sort xs) (sort (models s'))
+          errBefore = euclideanDistanceSquared (map toDouble . sort $ xs) (map toDouble . sort . models $ s)
+          errAfter = euclideanDistanceSquared (map toDouble . sort $ xs) (map toDouble . sort . models $ s')
 
 test :: Test
 test = testGroup "QuickCheck Data.Datamining.Clustering.DSOM"

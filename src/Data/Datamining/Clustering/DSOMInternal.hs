@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Datamining.Clustering.DSOMInternal
--- Copyright   :  (c) Amy de Buitléir 2012-2014
+-- Copyright   :  (c) Amy de Buitléir 2012-2015
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental
@@ -21,7 +21,6 @@ import Data.List (foldl', minimumBy)
 import Data.Ord (comparing)
 import qualified Math.Geometry.Grid as G (Grid(..), FiniteGrid(..))
 import qualified Math.Geometry.GridMap as GM (GridMap(..))
-import Data.Datamining.Pattern (Pattern(..))
 import Data.Datamining.Clustering.Classifier(Classifier(..))
 import Prelude hiding (lookup)
 
@@ -38,34 +37,52 @@ import Prelude hiding (lookup)
 --      just return an @error@). It would be problematic to implement
 --      them because the input DSOM and the output DSOM would have to
 --      have the same @Metric@ type.
-data DSOM gm k p = DSOM
+data DSOM gm x k p = DSOM
   {
-    sGridMap :: gm p,
-    sLearningFunction :: (Metric p -> Metric p -> Metric p -> Metric p)
+    -- | Maps patterns to tiles in a regular grid.
+    --   In the context of a SOM, the tiles are called "nodes"
+    gridMap :: gm p,
+    -- | A function which determines the how quickly the SOM learns.
+    learningRate :: (x -> x -> x -> x),
+    -- | A function which compares two patterns and returns a 
+    --   /non-negative/ numberrepresenting how different the patterns
+    --   are.
+    --   A result of @0@ indicates that the patterns are identical.
+    difference :: p -> p -> x,
+    -- | A function which updates models.
+    --   If this function is @f@, then @f target amount pattern@ returns
+    --   a modified copy of @pattern@ that is more similar to @target@
+    --   than @pattern@ is.
+    --   The magnitude of the adjustment is controlled by the @amount@
+    --   parameter, which should be a number between 0 and 1.
+    --   Larger values for @amount@ permit greater adjustments.
+    --   If @amount@=1, the result should be identical to the @target@.
+    --   If @amount@=0, the result should be the unmodified @pattern@.
+    makeSimilar :: p -> x -> p -> p
   }
 
-instance (F.Foldable gm) => F.Foldable (DSOM gm k) where
-  foldr f x g = F.foldr f x (sGridMap g)
+instance (F.Foldable gm) => F.Foldable (DSOM gm x k) where
+  foldr f x g = F.foldr f x (gridMap g)
 
-instance (G.Grid (gm p)) => G.Grid (DSOM gm k p) where
-  type Index (DSOM gm k p) = G.Index (gm p)
-  type Direction (DSOM gm k p) = G.Direction (gm p)
-  indices = G.indices . sGridMap
-  distance = G.distance . sGridMap
-  neighbours = G.neighbours . sGridMap
-  contains = G.contains . sGridMap
-  viewpoint = G.viewpoint . sGridMap
-  directionTo = G.directionTo . sGridMap
-  tileCount = G.tileCount . sGridMap
-  null = G.null . sGridMap
-  nonNull = G.nonNull . sGridMap
+instance (G.Grid (gm p)) => G.Grid (DSOM gm x k p) where
+  type Index (DSOM gm x k p) = G.Index (gm p)
+  type Direction (DSOM gm x k p) = G.Direction (gm p)
+  indices = G.indices . gridMap
+  distance = G.distance . gridMap
+  neighbours = G.neighbours . gridMap
+  contains = G.contains . gridMap
+  viewpoint = G.viewpoint . gridMap
+  directionTo = G.directionTo . gridMap
+  tileCount = G.tileCount . gridMap
+  null = G.null . gridMap
+  nonNull = G.nonNull . gridMap
 
 instance
   (F.Foldable gm, GM.GridMap gm p, G.FiniteGrid (GM.BaseGrid gm p)) =>
-    GM.GridMap (DSOM gm k) p where
-  type BaseGrid (DSOM gm k) p = GM.BaseGrid gm p
-  toGrid = GM.toGrid . sGridMap
-  toMap = GM.toMap . sGridMap
+    GM.GridMap (DSOM gm x k) p where
+  type BaseGrid (DSOM gm x k) p = GM.BaseGrid gm p
+  toGrid = GM.toGrid . gridMap
+  toMap = GM.toMap . gridMap
   mapWithKey = error "Not implemented"
   delete k = withGridMap (GM.delete k)
   adjustWithKey f k = withGridMap (GM.adjustWithKey f k)
@@ -73,25 +90,26 @@ instance
   alter f k = withGridMap (GM.alter f k)
   filterWithKey f = withGridMap (GM.filterWithKey f)
 
-withGridMap :: (gm p -> gm p) -> DSOM gm k p -> DSOM gm k p
-withGridMap f s = s { sGridMap=gm' }
-    where gm = sGridMap s
+withGridMap :: (gm p -> gm p) -> DSOM gm x k p -> DSOM gm x k p
+withGridMap f s = s { gridMap=gm' }
+    where gm = gridMap s
           gm' = f gm
 
 -- | Extracts the grid and current models from the DSOM.
-toGridMap :: GM.GridMap gm p => DSOM gm k p -> gm p
-toGridMap = sGridMap
+toGridMap :: GM.GridMap gm p => DSOM gm x k p -> gm p
+toGridMap = gridMap
 
 adjustNode
-  :: (Pattern p, G.FiniteGrid (gm p), GM.GridMap gm p,
-      k ~ G.Index (gm p), Ord k, k ~ G.Index (GM.BaseGrid gm p),
-      Num (Metric p), Fractional (Metric p)) => 
-     gm p -> (Metric p -> Metric p -> Metric p) -> p -> k -> k -> p -> p
-adjustNode gm f target bmu k = makeSimilar target amount
-  where diff = difference (gm GM.! k) target
+  :: (G.FiniteGrid (gm p), GM.GridMap gm p,
+      k ~ G.Index (gm p), k ~ G.Index (GM.BaseGrid gm p),
+      Ord k, Num x, Fractional x) => 
+     gm p -> (p -> x -> p -> p) -> (p -> p -> x) -> (x -> x -> x) -> p -> k -> k
+       -> (p -> p)
+adjustNode gm fms fd fr target bmu k = fms target amount
+  where diff = fd (gm GM.! k) target
         dist = scaleDistance (G.distance gm bmu k)
                  (G.maxPossibleDistance gm)
-        amount = f diff dist
+        amount = fr diff dist
 
 scaleDistance :: (Num a, Fractional a) => Int -> Int -> a
 scaleDistance d dMax
@@ -103,39 +121,40 @@ scaleDistance d dMax
 --   Most users should use @train@, which automatically determines
 --   the BMU and trains it and its neighbourhood.
 trainNeighbourhood
-  :: (Pattern p, G.FiniteGrid (gm p), GM.GridMap gm p, Num (Metric p),
-      Ord k, k ~ G.Index (gm p),
-      k ~ G.Index (GM.BaseGrid gm p), Fractional (Metric p)) =>
-     DSOM gm t p -> k -> p -> DSOM gm k p
-trainNeighbourhood s bmu target = s { sGridMap=gm' }
-  where gm = sGridMap s
-        gm' = GM.mapWithKey (adjustNode gm f target bmu) gm
-        f = (sLearningFunction s) bmuDiff
-        bmuDiff = difference (gm GM.! bmu) target
+  :: (G.FiniteGrid (gm p), GM.GridMap gm p,
+      k ~ G.Index (gm p), k ~ G.Index (GM.BaseGrid gm p),
+      Ord k, Num x, Fractional x) => 
+      DSOM gm x t p -> k -> p -> DSOM gm x k p
+trainNeighbourhood s bmu target = s { gridMap=gm' }
+  where gm = gridMap s
+        gm' = GM.mapWithKey (adjustNode gm fms fd fr target bmu) gm
+        fms = makeSimilar s
+        fd = difference s
+        fr = (learningRate s) bmuDiff
+        bmuDiff = (difference s) (gm GM.! bmu) target
 
 justTrain
-  :: (Pattern p, G.FiniteGrid (gm p), GM.GridMap gm p,
-      Num (Metric p), Ord (Metric p), Ord (G.Index (gm p)),
-      GM.GridMap gm (Metric p), Fractional (Metric p),
-      G.Index (GM.BaseGrid gm (Metric p)) ~ G.Index (gm p),
-      G.Index (GM.BaseGrid gm p) ~ G.Index (gm p)) =>
-     DSOM gm t p -> p -> DSOM gm (G.Index (gm p)) p
+  :: (G.FiniteGrid (gm p), GM.GridMap gm p, GM.GridMap gm x,
+      k ~ G.Index (gm p), k ~ G.Index (gm x),
+      k ~ G.Index (GM.BaseGrid gm p), k ~ G.Index (GM.BaseGrid gm x),
+      Ord k, Ord x, Num x, Fractional x) => 
+     DSOM gm x t p -> p -> DSOM gm x k p
 justTrain s p = trainNeighbourhood s bmu p
-  where ds = GM.toList . GM.map (p `difference`) $ sGridMap s
+  where ds = GM.toList . GM.map (difference s p) $ gridMap s
         bmu = f ds
         f [] = error "DSOM has no models"
         f xs = fst $ minimumBy (comparing snd) xs
 
 instance
-  (GM.GridMap gm p, k ~ G.Index (GM.BaseGrid gm p), Pattern p,
-    G.FiniteGrid (gm p), GM.GridMap gm (Metric p), k ~ G.Index (gm p),
-    k ~ G.Index (GM.BaseGrid gm (Metric p)), Ord k, Ord (Metric p),
-    Num (Metric p), Fractional (Metric p)) =>
-   Classifier (DSOM gm) k p where
-  toList = GM.toList . sGridMap
-  numModels = G.tileCount . sGridMap
-  models = GM.elems . sGridMap
-  differences s p = GM.toList . GM.map (p `difference`) $ sGridMap s
+  (GM.GridMap gm p, k ~ G.Index (GM.BaseGrid gm p), 
+    G.FiniteGrid (gm p), GM.GridMap gm x, k ~ G.Index (gm p),
+    k ~ G.Index (gm x), k ~ G.Index (GM.BaseGrid gm x), Ord k, Ord x,
+    Num x, Fractional x) =>
+   Classifier (DSOM gm) x k p where
+  toList = GM.toList . gridMap
+  numModels = G.tileCount . gridMap
+  models = GM.elems . gridMap
+  differences s p = GM.toList . GM.map (difference s p) $ gridMap s
   trainBatch s = foldl' justTrain s
   reportAndTrain s p = (bmu, ds, s')
     where ds = differences s p
@@ -143,53 +162,6 @@ instance
           f [] = error "DSOM has no models"
           f xs = fst $ minimumBy (comparing snd) xs
           s' = trainNeighbourhood s bmu p
-
-
--- | Creates a classifier with a default (bell-shaped) learning
---   function. Usage is @'defaultDSOM' gm r w t@, where:
---
---   [@gm@] The geometry and initial models for this classifier.
---   A reasonable choice here is @'lazyGridMap' g ps@, where @g@ is a
---   @'HexHexGrid'@, and @ps@ is a set of random patterns.
---
---   [@r@] and [@p@] are the first two parameters to the
---   @'rougierLearningFunction'@.
-defaultDSOM
-  :: (Eq (Metric p), Ord (Metric p), Floating (Metric p)) =>
-     gm p -> Metric p -> Metric p -> DSOM gm k p
-defaultDSOM gm r p =
-  DSOM {
-        sGridMap=gm,
-        sLearningFunction=rougierLearningFunction r p
-      }
-
--- | Creates a classifier with a custom learning function.
---   Usage is @'customDSOM' gm g@, where:
---
---   [@gm@] The geometry and initial models for this classifier.
---   A reasonable choice here is @'lazyGridMap' g ps@, where @g@ is a
---   @'HexHexGrid'@, and @ps@ is a set of random patterns.
---
---   [@f@] A function used to determine the learning rate (for
---   adjusting the models in the classifier).
---   This function will be invoked with three parameters.
---   The first parameter will indicate how different the BMU is from
---   the input pattern.
---   The second parameter indicates how different the pattern of the
---   node currently being trained is from the input pattern.
---   The third parameter is the grid distance from the BMU to the node
---   currently being trained, as a fraction of the maximum grid
---   distance.
---   The output is the learning rate for that node (the amount by
---   which the node's model should be updated to match the target).
---   The learning rate should be between zero and one.
-customDSOM
-  :: gm p -> (Metric p -> Metric p -> Metric p -> Metric p) -> DSOM gm k p
-customDSOM gm f =
-  DSOM {
-        sGridMap=gm,
-        sLearningFunction=f
-      }
 
 -- | Configures a learning function that depends not on the time, but
 --   on how good a model we already have for the target. If the

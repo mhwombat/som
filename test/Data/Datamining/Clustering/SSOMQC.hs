@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Datamining.Clustering.SSOMQC
--- Copyright   :  (c) Amy de Buitléir 2012-2014
+-- Copyright   :  (c) Amy de Buitléir 2012-2015
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental
@@ -19,115 +19,102 @@ module Data.Datamining.Clustering.SSOMQC
     test
   ) where
 
-import Data.Datamining.Pattern (Pattern, Metric, difference,
-  euclideanDistanceSquared, makeSimilar)
+import Data.Datamining.Pattern (euclideanDistanceSquared, adjustNum,
+  absDifference)
 import Data.Datamining.Clustering.Classifier(classify,
   classifyAndTrain, reportAndTrain, differences, diffAndTrain, models,
   train, trainBatch)
 import Data.Datamining.Clustering.SSOMInternal
 import qualified Data.Map.Strict as M
 
-import Control.Applicative
-import Data.Function (on)
 import Data.List (sort)
 import System.Random (Random)
 import Test.Framework as TF (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose,
-  Property, property, sized, suchThat, vectorOf)
+import Test.QuickCheck ((==>), Gen, Arbitrary, Property, Positive,
+  arbitrary, shrink, choose, property, sized, suchThat, vectorOf,
+  getPositive)
+
+newtype UnitInterval a = UnitInterval {getUnitInterval :: a}
+ deriving ( Eq, Ord, Show, Read)
+
+instance Functor UnitInterval where
+  fmap f (UnitInterval x) = UnitInterval (f x)
+
+instance (Num a, Ord a, Random a, Arbitrary a)
+    => Arbitrary (UnitInterval a) where
+  arbitrary = fmap UnitInterval $ choose (0,1)
+  shrink (UnitInterval x) =
+    [ UnitInterval x' | x' <- shrink x, x' >= 0, x' <= 1]
+
+prop_Exponential_starts_at_r0
+  :: UnitInterval Double -> Positive Double -> Property
+prop_Exponential_starts_at_r0 r0 d
+  = property $ abs (exponential r0' d' 0 - r0') < 0.01
+  where r0' = getUnitInterval r0
+        d' = getPositive d
+
+prop_Exponential_ge_0
+  :: UnitInterval Double -> Positive Double -> Positive Double -> Property
+prop_Exponential_ge_0 r0 d t = property $ exponential r0' d' t' >= 0
+  where r0' = getUnitInterval r0
+        d' = getPositive d
+        t' = getPositive t
 
 positive :: (Num a, Ord a, Arbitrary a) => Gen a
 positive = arbitrary `suchThat` (> 0)
-
-instance
-  (Random a, Num a, Ord a, Arbitrary a)
-  => Arbitrary (Exponential a) where
-  arbitrary = do
-    r0 <- choose (0,1)
-    d <- positive
-    return $ Exponential r0 d
-
-prop_Exponential_starts_at_r0
-  :: Exponential Double -> Property
-prop_Exponential_starts_at_r0 f@(Exponential r0 _)
-  = property $ abs (rate f 0 - r0) < 0.01
-
-prop_Exponential_ge_0
-  :: Exponential Double -> Double -> Property
-prop_Exponential_ge_0 f t
-  = property $ rate f t' >= 0
-  where t' = abs t
-
-newtype TestPattern = MkPattern Double deriving Show
-
-instance Eq TestPattern where
-  (==) = (==) `on` toDouble
-
-instance Ord TestPattern where
-  compare = compare `on` toDouble
-
-instance Pattern TestPattern where
-  type Metric TestPattern = Double
-  difference (MkPattern a) (MkPattern b) = abs (a - b)
-  makeSimilar orig@(MkPattern a) r (MkPattern b)
-    | r < 0     = error "Negative learning rate"
-    | r > 1     = error "Learning rate > 1"
-    | r == 1     = orig
-    | otherwise = MkPattern (b + delta)
-        where diff = a - b
-              delta = r*diff
-
-instance Arbitrary TestPattern where
-  arbitrary = MkPattern <$> arbitrary
-
-toDouble :: TestPattern -> Double
-toDouble (MkPattern a) = a
-
-absDiff :: [TestPattern] -> [TestPattern] -> Double
-absDiff xs ys = euclideanDistanceSquared xs' ys'
-  where xs' = map toDouble xs
-        ys' = map toDouble ys
 
 -- | A classifier and a training set. The training set will consist of
 --   @j@ vectors of equal length, where @j@ is the number of patterns
 --   the classifier can model. After running through the training set a
 --   few times, the classifier should be very accurate at identifying
 --   any of those @j@ vectors.
-data SSOMandTargets = SSOMandTargets (SSOM (Exponential Double)
-  Int Int TestPattern) [TestPattern]
-    deriving (Eq, Show)
+data SSOMTestData
+  = SSOMTestData
+    {
+      som1 :: SSOM Double Double Int Double,
+      learningRateDesc1 :: String,
+      trainingSet1 :: [Double]
+    }
 
-buildSSOMandTargets
-  :: [TestPattern] -> Double -> Double -> [TestPattern] -> SSOMandTargets
-buildSSOMandTargets ps r0 d targets =
-  SSOMandTargets s targets
+instance Show SSOMTestData where
+  show s = "buildSSOMTestData " ++ show (M.elems . sMap . som1 $ s)
+    ++ " " ++ learningRateDesc1 s 
+    ++ " " ++ show (trainingSet1 s) 
+
+buildSSOMTestData
+  :: [Double] -> Double -> Double -> [Double] -> SSOMTestData
+buildSSOMTestData ps r0 d targets =
+  SSOMTestData s desc targets
     where gm = M.fromList . zip [0..] $ ps
-          s = SSOM gm (Exponential r0 d) 0
+          lrf = exponential r0 d
+          s = SSOM gm lrf absDifference adjustNum 0
+          desc = show r0 ++ " " ++ show d
 
-sizedSSOMandTargets :: Int -> Gen SSOMandTargets
-sizedSSOMandTargets n = do
+sizedSSOMTestData :: Int -> Gen SSOMTestData
+sizedSSOMTestData n = do
   let len = n + 1
   ps <- vectorOf len arbitrary
   r0 <- choose (0, 1)
   d <- positive
   targets <- vectorOf len arbitrary
-  return $ buildSSOMandTargets ps r0 d targets
+  return $ buildSSOMTestData ps r0 d targets
 
-instance Arbitrary SSOMandTargets where
-  arbitrary = sized sizedSSOMandTargets
+instance Arbitrary SSOMTestData where
+  arbitrary = sized sizedSSOMTestData
 
-prop_training_reduces_error :: SSOMandTargets -> Property
-prop_training_reduces_error (SSOMandTargets s xs) = errBefore /= 0 ==>
+prop_training_reduces_error :: SSOMTestData -> Property
+prop_training_reduces_error (SSOMTestData s _ xs) = errBefore /= 0 ==>
   errAfter < errBefore
     where (bmu, s') = classifyAndTrain s x
           x = head xs
-          errBefore = abs $ toDouble x - toDouble (toMap s M.! bmu)
-          errAfter = abs $ toDouble x - toDouble (toMap s' M.! bmu)
+          errBefore = abs $ x - (toMap s M.! bmu)
+          errAfter = abs $ x - (toMap s' M.! bmu)
 
 --   Invoking @diffAndTrain f s p@ should give identical results to
 --   @(p `classify` s, train s f p)@.
-prop_classifyAndTrainEquiv :: SSOMandTargets -> Property
-prop_classifyAndTrainEquiv (SSOMandTargets s ps) = property $
+prop_classifyAndTrainEquiv :: SSOMTestData -> Property
+prop_classifyAndTrainEquiv (SSOMTestData s _ ps) = property $
   bmu == s `classify` p && toMap s1 == toMap s2
     where p = head ps
           (bmu, s1) = classifyAndTrain s p
@@ -135,8 +122,8 @@ prop_classifyAndTrainEquiv (SSOMandTargets s ps) = property $
 
 --   Invoking @diffAndTrain f s p@ should give identical results to
 --   @(s `diff` p, train s f p)@.
-prop_diffAndTrainEquiv :: SSOMandTargets -> Property
-prop_diffAndTrainEquiv (SSOMandTargets s ps) = property $
+prop_diffAndTrainEquiv :: SSOMTestData -> Property
+prop_diffAndTrainEquiv (SSOMTestData s _ ps) = property $
   diffs == s `differences` p && toMap s1 == toMap s2
     where p = head ps
           (diffs, s1) = diffAndTrain s p
@@ -144,8 +131,8 @@ prop_diffAndTrainEquiv (SSOMandTargets s ps) = property $
 
 --   Invoking @trainNode s (classify s p) p@ should give
 --   identical results to @train s p@.
-prop_trainNodeEquiv :: SSOMandTargets -> Property
-prop_trainNodeEquiv (SSOMandTargets s ps) = property $
+prop_trainNodeEquiv :: SSOMTestData -> Property
+prop_trainNodeEquiv (SSOMTestData s _ ps) = property $
   toMap s1 == toMap s2
     where p = head ps
           s1 = trainNode s (classify s p) p
@@ -154,8 +141,8 @@ prop_trainNodeEquiv (SSOMandTargets s ps) = property $
 -- | The training set consists of the same vectors in the same order,
 --   several times over. So the resulting classifications should consist
 --   of the same integers in the same order, over and over.
-prop_batch_training_works :: SSOMandTargets -> Property
-prop_batch_training_works (SSOMandTargets s xs) = property $
+prop_batch_training_works :: SSOMTestData -> Property
+prop_batch_training_works (SSOMTestData s _ xs) = property $
   classifications == (concat . replicate 5) firstSet
   where trainingSet = (concat . replicate 5) xs
         s' = trainBatch s trainingSet
@@ -164,39 +151,50 @@ prop_batch_training_works (SSOMandTargets s xs) = property $
 
 -- | WARNING: This can fail when two nodes are close enough in
 --   value so that after training they become identical.
-prop_classification_is_consistent :: SSOMandTargets -> Property
-prop_classification_is_consistent (SSOMandTargets s (x:_))
+prop_classification_is_consistent :: SSOMTestData -> Property
+prop_classification_is_consistent (SSOMTestData s _ (x:_))
   = property $ bmu == bmu'
   where (bmu, _, s') = reportAndTrain s x
         (bmu', _, _) = reportAndTrain s' x
 prop_classification_is_consistent _ = error "Should not happen"
 
--- | Same as SSOMandTargets, except that the initial models and training
+-- | Same as SSOMTestData, except that the initial models and training
 --   set are designed to ensure that a single node will NOT train to
 --   more than one pattern.
-data SpecialSSOMandTargets = SpecialSSOMandTargets (SSOM
-  (Exponential Double) Int Int TestPattern) [TestPattern]
-    deriving (Eq, Show)
+data SpecialSSOMTestData
+  = SpecialSSOMTestData
+    {
+      som2 :: SSOM Double Double Int Double,
+      learningRateDesc2 :: String,
+      trainingSet2 :: [Double]
+    }
 
-buildSpecialSSOMandTargets
-  :: [TestPattern] -> Double -> Double -> [TestPattern]
-    -> SpecialSSOMandTargets
-buildSpecialSSOMandTargets ps r0 d targets =
-  SpecialSSOMandTargets s targets
+instance Show SpecialSSOMTestData where
+  show s = "buildSpecialSSOMTestData "
+    ++ show (M.elems . sMap . som2 $ s)
+    ++ " " ++ learningRateDesc2 s 
+    ++ " " ++ show (trainingSet2 s) 
+
+buildSpecialSSOMTestData
+  :: [Double] -> Double -> Double -> [Double] -> SpecialSSOMTestData
+buildSpecialSSOMTestData ps r0 d targets =
+  SpecialSSOMTestData s desc targets
     where gm = M.fromList . zip [0..] $ ps
-          s = SSOM gm (Exponential r0 d) 0
+          lrf = exponential r0 d
+          s = SSOM gm lrf absDifference adjustNum 0
+          desc = show r0 ++ " " ++ show d
 
-sizedSpecialSSOMandTargets :: Int -> Gen SpecialSSOMandTargets
-sizedSpecialSSOMandTargets n = do
+sizedSpecialSSOMTestData :: Int -> Gen SpecialSSOMTestData
+sizedSpecialSSOMTestData n = do
   let len = n + 1
-  let ps = map MkPattern $ take len [0,100..]
+  let ps = take len [0,100..]
   r0 <- choose (0, 1)
   d <- positive
-  let targets = map MkPattern $ take len [5,105..]
-  return $ buildSpecialSSOMandTargets ps r0 d targets
+  let targets = take len [5,105..]
+  return $ buildSpecialSSOMTestData ps r0 d targets
 
-instance Arbitrary SpecialSSOMandTargets where
-  arbitrary = sized sizedSpecialSSOMandTargets
+instance Arbitrary SpecialSSOMTestData where
+  arbitrary = sized sizedSpecialSSOMTestData
 
 -- | If we train a classifier once on a set of patterns, where the
 --   number of patterns in the set is equal to the number of nodes in
@@ -204,44 +202,56 @@ instance Arbitrary SpecialSSOMandTargets where
 --   representation of the training set. The initial models and training
 --   set are designed to ensure that a single node will NOT train to
 --   more than one pattern (which would render the test invalid).
-prop_batch_training_works2 :: SpecialSSOMandTargets -> Property
-prop_batch_training_works2 (SpecialSSOMandTargets s xs) =
+prop_batch_training_works2 :: SpecialSSOMTestData -> Property
+prop_batch_training_works2 (SpecialSSOMTestData s _ xs) =
   errBefore /= 0 ==> errAfter < errBefore
     where s' = trainBatch s xs
-          errBefore = absDiff (sort xs) (sort (models s))
-          errAfter = absDiff (sort xs) (sort (models s'))
+          errBefore = euclideanDistanceSquared (sort xs) (sort (models s))
+          errAfter = euclideanDistanceSquared (sort xs) (sort (models s'))
 
-data IncompleteSSOMandTargets = IncompleteSSOMandTargets (SSOM
-  (Exponential Double) Int Int TestPattern) [TestPattern] deriving Show
+-- | Same as sizedSSOMTestData, except some nodes don't have a value.
+data IncompleteSSOMTestData
+  = IncompleteSSOMTestData
+    {
+      som3 :: SSOM Double Double Int Double,
+      learningRateDesc3 :: String,
+      trainingSet3 :: [Double]
+    }
 
-buildIncompleteSSOMandTargets
-  :: [TestPattern] -> Double -> Double -> [TestPattern]
-    -> IncompleteSSOMandTargets
-buildIncompleteSSOMandTargets ps r0 d targets =
-  IncompleteSSOMandTargets s targets
+instance Show IncompleteSSOMTestData where
+  show s = "buildIncompleteSSOMTestData "
+    ++ show (M.elems . sMap . som3 $ s)
+    ++ " " ++ learningRateDesc3 s 
+    ++ " " ++ show (trainingSet3 s) 
+
+buildIncompleteSSOMTestData
+  :: [Double] -> Double -> Double -> [Double] -> IncompleteSSOMTestData
+buildIncompleteSSOMTestData ps r0 d targets =
+  IncompleteSSOMTestData s desc targets
     where gm = M.fromList . zip [0..] $ ps
-          s = SSOM gm (Exponential r0 d) 0
+          lrf = exponential r0 d
+          s = SSOM gm lrf absDifference adjustNum 0
+          desc = show r0 ++ " " ++ show d
 
--- | Same as sizedSSOMandTargets, except some nodes don't have a value.
-sizedIncompleteSSOMandTargets :: Int -> Gen IncompleteSSOMandTargets
-sizedIncompleteSSOMandTargets n = do
+sizedIncompleteSSOMTestData :: Int -> Gen IncompleteSSOMTestData
+sizedIncompleteSSOMTestData n = do
   let len = n + 1
   ps <- vectorOf len arbitrary
   r0 <- choose (0, 1)
   d <- positive
   targets <- vectorOf len arbitrary
-  return $ buildIncompleteSSOMandTargets ps r0 d targets
+  return $ buildIncompleteSSOMTestData ps r0 d targets
 
-instance Arbitrary IncompleteSSOMandTargets where
-  arbitrary = sized sizedIncompleteSSOMandTargets
+instance Arbitrary IncompleteSSOMTestData where
+  arbitrary = sized sizedIncompleteSSOMTestData
 
-prop_can_train_incomplete_SSOM :: IncompleteSSOMandTargets -> Property
-prop_can_train_incomplete_SSOM (IncompleteSSOMandTargets s xs) = errBefore /= 0 ==>
+prop_can_train_incomplete_SSOM :: IncompleteSSOMTestData -> Property
+prop_can_train_incomplete_SSOM (IncompleteSSOMTestData s _ xs) = errBefore /= 0 ==>
   errAfter < errBefore
     where (bmu, s') = classifyAndTrain s x
           x = head xs
-          errBefore = abs $ toDouble x - toDouble (toMap s M.! bmu)
-          errAfter = abs $ toDouble x - toDouble (toMap s' M.! bmu)
+          errBefore = abs $ x - (toMap s M.! bmu)
+          errAfter = abs $ x - (toMap s' M.! bmu)
 
 test :: Test
 test = testGroup "QuickCheck Data.Datamining.Clustering.SSOM"

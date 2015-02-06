@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Datamining.Clustering.SOMQC
--- Copyright   :  (c) Amy de Buitléir 2012-2014
+-- Copyright   :  (c) Amy de Buitléir 2012-2015
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental
@@ -19,18 +19,17 @@ module Data.Datamining.Clustering.SOMQC
     test
   ) where
 
-import Data.Datamining.Pattern (Pattern, Metric, difference,
-  euclideanDistanceSquared, magnitudeSquared, makeSimilar)
+import Data.Datamining.Pattern (euclideanDistanceSquared,
+  magnitudeSquared, adjustNum, absDifference)
 import Data.Datamining.Clustering.Classifier(classify,
   classifyAndTrain, reportAndTrain, differences, diffAndTrain, models,
   numModels, train, trainBatch)
 import Data.Datamining.Clustering.SOMInternal
 
-import Control.Applicative
-import Data.Function (on)
 import Data.List (sort)
+import Math.Geometry.Grid (size)
 import Math.Geometry.Grid.Hexagonal (HexHexGrid, hexHexGrid)
-import Math.Geometry.GridMap ((!))
+import Math.Geometry.GridMap ((!), elems)
 import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
 import System.Random (Random)
 import Test.Framework as TF (Test, testGroup)
@@ -38,101 +37,59 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose,
   Property, property, sized, suchThat, vectorOf)
 
--- data GaussianArgs = GaussianArgs Double Double Int deriving Show
-
 positive :: (Num a, Ord a, Arbitrary a) => Gen a
 positive = arbitrary `suchThat` (> 0)
 
--- instance Arbitrary GaussianArgs where
---   arbitrary = GaussianArgs <$> choose (0,1) <*> positive <*> positive
-
--- arbDecayingGaussian :: Gen (DecayingGaussian
--- prop_decayingGaussian_small_after_tMax :: GaussianArgs -> Property
--- prop_decayingGaussian_small_after_tMax (GaussianArgs r w0 tMax) =
---   property $ decayingGaussian r w0 tMax (tMax+1) 0 < exp(-1)
-
--- prop_decayingGaussian_small_far_from_bmu :: GaussianArgs -> Property
--- prop_decayingGaussian_small_far_from_bmu (GaussianArgs r w0 tMax)
---   = property $
---       decayingGaussian r w0 tMax 0 (2*(ceiling w0)) < r * exp(-1)
+data DecayingGaussianParams a = DecayingGaussianParams a a a a a
+  deriving (Eq, Show)
 
 instance
   (Random a, Num a, Ord a, Arbitrary a)
-  => Arbitrary (DecayingGaussian a) where
+  => Arbitrary (DecayingGaussianParams a) where
   arbitrary = do
     r0 <- choose (0,1)
     rf <- choose (0,r0)
     w0 <- positive
     wf <- choose (0,w0)
     tf <- positive
-    return $ DecayingGaussian r0 rf w0 wf tf
+    return $ DecayingGaussianParams r0 rf w0 wf tf
 
 prop_DecayingGaussian_starts_at_r0
-  :: DecayingGaussian Double -> Property
-prop_DecayingGaussian_starts_at_r0 f@(DecayingGaussian r0 _ _ _ _)
-  = property $ abs ((rate f 0 0) - r0) < 0.01
+  :: DecayingGaussianParams Double -> Property
+prop_DecayingGaussian_starts_at_r0 (DecayingGaussianParams r0 rf w0 wf tf)
+  = property $ abs ((decayingGaussian r0 rf w0 wf tf 0 0) - r0) < 0.01
 
 prop_DecayingGaussian_starts_at_w0
-  :: DecayingGaussian Double -> Property
-prop_DecayingGaussian_starts_at_w0 f@(DecayingGaussian r0 _ w0 _ _)
+  :: DecayingGaussianParams Double -> Property
+prop_DecayingGaussian_starts_at_w0 (DecayingGaussianParams r0 rf w0 wf tf)
   = property $
-    rate f 0 inside >= r0 * exp (-0.5) && rate f 0 outside < r0 * exp (-0.5)
+    decayingGaussian r0 rf w0 wf tf 0 inside >= r0 * exp (-0.5)
+      && decayingGaussian r0 rf w0 wf tf 0 outside < r0 * exp (-0.5)
   where inside = w0 - 0.001
         outside = w0 + 0.001
 
 prop_DecayingGaussian_decays_to_rf
-  :: DecayingGaussian Double -> Property
-prop_DecayingGaussian_decays_to_rf f@(DecayingGaussian _ rf _ _ tf)
-  = property $ abs ((rate f tf 0) - rf) < 0.01
+  :: DecayingGaussianParams Double -> Property
+prop_DecayingGaussian_decays_to_rf (DecayingGaussianParams r0 rf w0 wf tf)
+  = property $ abs ((decayingGaussian r0 rf w0 wf tf tf 0) - rf) < 0.01
 
 prop_DecayingGaussian_shrinks_to_wf
-  :: DecayingGaussian Double -> Property
-prop_DecayingGaussian_shrinks_to_wf f@(DecayingGaussian _ rf _ wf tf)
+  :: DecayingGaussianParams Double -> Property
+prop_DecayingGaussian_shrinks_to_wf (DecayingGaussianParams r0 rf w0 wf tf)
   = property $
-    rate f tf inside >= rf * exp (-0.5) && rate f tf outside < rf * exp (-0.5)
+    decayingGaussian r0 rf w0 wf tf tf inside >= rf * exp (-0.5)
+      && decayingGaussian r0 rf w0 wf tf tf outside < rf * exp (-0.5)
   where inside = wf - 0.001
         outside = wf + 0.001
 
-newtype TestPattern = MkPattern Double deriving Show
-
-instance Eq TestPattern where
-  (==) = (==) `on` toDouble
-
-instance Ord TestPattern where
-  compare = compare `on` toDouble
-
-instance Pattern TestPattern where
-  type Metric TestPattern = Double
-  difference (MkPattern a) (MkPattern b) = abs (a - b)
-  makeSimilar orig@(MkPattern a) r (MkPattern b)
-    | r < 0     = error "Negative learning rate"
-    | r > 1     = error "Learning rate > 1"
-    | r == 1     = orig
-    | otherwise = MkPattern (b + delta)
-        where diff = a - b
-              delta = r*diff
-
-instance Arbitrary TestPattern where
-  arbitrary = MkPattern <$> arbitrary
-
-toDouble :: TestPattern -> Double
-toDouble (MkPattern a) = a
-
-absDiff :: [TestPattern] -> [TestPattern] -> Double
-absDiff xs ys = euclideanDistanceSquared xs' ys'
-  where xs' = map toDouble xs
-        ys' = map toDouble ys
-
-fractionDiff :: [TestPattern] -> [TestPattern] -> Double
+fractionDiff :: [Double] -> [Double] -> Double
 fractionDiff xs ys = if denom == 0 then 0 else d / denom
-  where d = sqrt $ euclideanDistanceSquared xs' ys'
+  where d = sqrt $ euclideanDistanceSquared xs ys
         denom = max xMag yMag
-        xMag = sqrt $ magnitudeSquared xs'
-        yMag = sqrt $ magnitudeSquared ys'
-        xs' = map toDouble xs
-        ys' = map toDouble ys
+        xMag = sqrt $ magnitudeSquared xs
+        yMag = sqrt $ magnitudeSquared ys
 
-approxEqual :: [TestPattern] -> [TestPattern] -> Bool
+approxEqual :: [Double] -> [Double] -> Bool
 approxEqual xs ys = fractionDiff xs ys <= 0.1
 
 -- | A classifier and a training set. The training set will consist of
@@ -140,22 +97,32 @@ approxEqual xs ys = fractionDiff xs ys <= 0.1
 --   the classifier can model. After running through the training set a
 --   few times, the classifier should be very accurate at identifying
 --   any of those @j@ vectors.
-data SOMandTargets = SOMandTargets (SOM (DecayingGaussian Double)
-  Int (LGridMap HexHexGrid) (Int, Int) TestPattern) [TestPattern]
-    deriving (Eq, Show)
+data SOMTestData
+  = SOMTestData
+    {
+      som1 :: SOM Double Double (LGridMap HexHexGrid) Double (Int, Int) Double,
+      params1 :: DecayingGaussianParams Double,
+      trainingSet1 :: [Double]
+    }
 
-buildSOMandTargets
-  :: Int -> [TestPattern] -> Double -> Double -> Double -> Double -> Int
-     -> [TestPattern] -> SOMandTargets
-buildSOMandTargets len ps r0 rf w0 wf tf targets =
-  SOMandTargets s targets
+instance Show SOMTestData where
+  show s = "buildSOMTestData " ++ show (size . gridMap . som1 $ s)
+    ++ " " ++ show (elems . gridMap . som1 $ s)
+    ++ " (" ++ show (params1 s) 
+    ++ ") " ++ show (trainingSet1 s) 
+
+buildSOMTestData
+  :: Int -> [Double] -> DecayingGaussianParams Double
+     -> [Double] -> SOMTestData
+buildSOMTestData len ps p@(DecayingGaussianParams r0 rf w0 wf tf) targets =
+  SOMTestData s p targets
     where g = hexHexGrid len
           gm = lazyGridMap g ps
-          tf' = fromIntegral tf
-          s = SOM gm (DecayingGaussian r0 rf w0 wf tf') 0
+          fr = decayingGaussian r0 rf w0 wf tf
+          s = SOM gm fr absDifference adjustNum 0
 
-sizedSOMandTargets :: Int -> Gen SOMandTargets
-sizedSOMandTargets n = do
+sizedSOMTestData :: Int -> Gen SOMTestData
+sizedSOMTestData n = do
   sideLength <- choose (1, min (n+1) 5) --avoid long tests
   let tileCount = 3*sideLength*(sideLength-1) + 1
   let numberOfPatterns = tileCount
@@ -166,37 +133,37 @@ sizedSOMandTargets n = do
   wf <- choose (0, w0)
   tf <- choose (1, 10)
   targets <- vectorOf numberOfPatterns arbitrary
-  return $ buildSOMandTargets sideLength ps r0 rf w0 wf tf targets
+  return $ buildSOMTestData sideLength ps (DecayingGaussianParams r0 rf w0 wf tf) targets
 
-instance Arbitrary SOMandTargets where
-  arbitrary = sized sizedSOMandTargets
+instance Arbitrary SOMTestData where
+  arbitrary = sized sizedSOMTestData
 
 -- | If we use a fixed learning rate of one (regardless of the distance
 --   from the BMU), and train a classifier once on one pattern, then all
 --   nodes should match the input vector.
-prop_global_instant_training_works :: SOMandTargets -> Property
-prop_global_instant_training_works (SOMandTargets s xs) =
+prop_global_instant_training_works :: SOMTestData -> Property
+prop_global_instant_training_works (SOMTestData s _ xs) =
   property $ finalModels `approxEqual` expectedModels
     where x = head xs
-          gm = toGridMap s :: LGridMap HexHexGrid TestPattern
-          f = (ConstantFunction 1)
-          s2 = SOM gm f 0
+          gm = toGridMap s :: LGridMap HexHexGrid Double
+          f _ _ = 1
+          s2 = SOM gm f absDifference adjustNum 0
           s3 = train s2 x
-          finalModels = models s3 :: [TestPattern]
-          expectedModels = replicate (numModels s) x :: [TestPattern]
+          finalModels = models s3 :: [Double]
+          expectedModels = replicate (numModels s) x :: [Double]
 
-prop_training_reduces_error :: SOMandTargets -> Property
-prop_training_reduces_error (SOMandTargets s xs) = errBefore /= 0 ==>
+prop_training_reduces_error :: SOMTestData -> Property
+prop_training_reduces_error (SOMTestData s _ xs) = errBefore /= 0 ==>
   errAfter < errBefore
     where (bmu, s') = classifyAndTrain s x
           x = head xs
-          errBefore = abs $ toDouble x - toDouble (gridMap s ! bmu)
-          errAfter = abs $ toDouble x - toDouble (gridMap s' ! bmu)
+          errBefore = abs $ x - (gridMap s ! bmu)
+          errAfter = abs $ x - (gridMap s' ! bmu)
 
 --   Invoking @diffAndTrain f s p@ should give identical results to
 --   @(p `classify` s, train s f p)@.
-prop_classifyAndTrainEquiv :: SOMandTargets -> Property
-prop_classifyAndTrainEquiv (SOMandTargets s ps) = property $
+prop_classifyAndTrainEquiv :: SOMTestData -> Property
+prop_classifyAndTrainEquiv (SOMTestData s _ ps) = property $
   bmu == s `classify` p && gridMap s1 == gridMap s2
     where p = head ps
           (bmu, s1) = classifyAndTrain s p
@@ -204,8 +171,8 @@ prop_classifyAndTrainEquiv (SOMandTargets s ps) = property $
 
 --   Invoking @diffAndTrain f s p@ should give identical results to
 --   @(s `diff` p, train s f p)@.
-prop_diffAndTrainEquiv :: SOMandTargets -> Property
-prop_diffAndTrainEquiv (SOMandTargets s ps) = property $
+prop_diffAndTrainEquiv :: SOMTestData -> Property
+prop_diffAndTrainEquiv (SOMTestData s _ ps) = property $
   diffs == s `differences` p && gridMap s1 == gridMap s2
     where p = head ps
           (diffs, s1) = diffAndTrain s p
@@ -213,8 +180,8 @@ prop_diffAndTrainEquiv (SOMandTargets s ps) = property $
 
 --   Invoking @trainNeighbourhood s (classify s p) p@ should give
 --   identical results to @train s p@.
-prop_trainNeighbourhoodEquiv :: SOMandTargets -> Property
-prop_trainNeighbourhoodEquiv (SOMandTargets s ps) = property $
+prop_trainNeighbourhoodEquiv :: SOMTestData -> Property
+prop_trainNeighbourhoodEquiv (SOMTestData s _ ps) = property $
   gridMap s1 == gridMap s2
     where p = head ps
           s1 = trainNeighbourhood s (classify s p) p
@@ -223,8 +190,8 @@ prop_trainNeighbourhoodEquiv (SOMandTargets s ps) = property $
 -- | The training set consists of the same vectors in the same order,
 --   several times over. So the resulting classifications should consist
 --   of the same integers in the same order, over and over.
-prop_batch_training_works :: SOMandTargets -> Property
-prop_batch_training_works (SOMandTargets s xs) = property $
+prop_batch_training_works :: SOMTestData -> Property
+prop_batch_training_works (SOMTestData s _ xs) = property $
   classifications == (concat . replicate 5) firstSet
   where trainingSet = (concat . replicate 5) xs
         s' = trainBatch s trainingSet
@@ -233,41 +200,51 @@ prop_batch_training_works (SOMandTargets s xs) = property $
 
 -- | WARNING: This can fail when two nodes are close enough in
 --   value so that after training they become identical.
+--   This only happens rarely, so if the test fails, try again.
 prop_classification_is_consistent
-  :: SOMandTargets -> Property
-prop_classification_is_consistent (SOMandTargets s (x:_))
+  :: SOMTestData -> Property
+prop_classification_is_consistent (SOMTestData s _ (x:_))
   = property $ bmu == bmu'
   where (bmu, _, s') = reportAndTrain s x
         (bmu', _, _) = reportAndTrain s' x
 prop_classification_is_consistent _ = error "Should not happen"
 
--- | Same as SOMandTargets, except that the initial models and training
+-- | Same as SOMTestData, except that the initial models and training
 --   set are designed to ensure that a single node will NOT train to
 --   more than one pattern.
-data SpecialSOMandTargets = SpecialSOMandTargets (SOM
-  (StepFunction Double) Int (LGridMap HexHexGrid) (Int, Int)
-  TestPattern) [TestPattern]
-    deriving (Eq, Show)
+data SpecialSOMTestData
+  = SpecialSOMTestData
+    {
+      som2 :: SOM Int Int (LGridMap HexHexGrid) Double (Int, Int) Double,
+      params2 :: Double,
+      trainingSet2 :: [Double]
+    }
 
-buildSpecialSOMandTargets
-  :: Int -> [TestPattern] -> Double -> [TestPattern] -> SpecialSOMandTargets
-buildSpecialSOMandTargets len ps r targets =
-  SpecialSOMandTargets s targets
+instance Show SpecialSOMTestData where
+  show s = "buildSpecialSOMTestData " ++ show (size . gridMap . som2 $ s)
+    ++ " " ++ show (elems . gridMap . som2 $ s)
+    ++ " " ++ show (params2 s) 
+    ++ " " ++ show (trainingSet2 s) 
+
+buildSpecialSOMTestData
+  :: Int -> [Double] -> Double -> [Double] -> SpecialSOMTestData
+buildSpecialSOMTestData len ps r targets =
+  SpecialSOMTestData s r targets
     where g = hexHexGrid len
           gm = lazyGridMap g ps
-          s = SOM gm (StepFunction r) 0
+          s = SOM gm (stepFunction r) absDifference adjustNum 0
 
-sizedSpecialSOMandTargets :: Int -> Gen SpecialSOMandTargets
-sizedSpecialSOMandTargets n = do
+sizedSpecialSOMTestData :: Int -> Gen SpecialSOMTestData
+sizedSpecialSOMTestData n = do
   sideLength <- choose (1, min (n+1) 5) --avoid long tests
   let tileCount = 3*sideLength*(sideLength-1) + 1
-  let ps = map MkPattern $ take tileCount [0,100..]
+  let ps = take tileCount [0,100..]
   r <- choose (0.001, 1)
-  let targets = map MkPattern $ take tileCount [5,105..]
-  return $ buildSpecialSOMandTargets sideLength ps r targets
+  let targets = take tileCount [5,105..]
+  return $ buildSpecialSOMTestData sideLength ps r targets
 
-instance Arbitrary SpecialSOMandTargets where
-  arbitrary = sized sizedSpecialSOMandTargets
+instance Arbitrary SpecialSOMTestData where
+  arbitrary = sized sizedSpecialSOMTestData
 
 -- | If we train a classifier once on a set of patterns, where the
 --   number of patterns in the set is equal to the number of nodes in
@@ -275,30 +252,40 @@ instance Arbitrary SpecialSOMandTargets where
 --   representation of the training set. The initial models and training
 --   set are designed to ensure that a single node will NOT train to
 --   more than one pattern (which would render the test invalid).
-prop_batch_training_works2 :: SpecialSOMandTargets -> Property
-prop_batch_training_works2 (SpecialSOMandTargets s xs) =
+prop_batch_training_works2 :: SpecialSOMTestData -> Property
+prop_batch_training_works2 (SpecialSOMTestData s _ xs) =
   errBefore /= 0 ==> errAfter < errBefore
     where s' = trainBatch s xs
-          errBefore = absDiff (sort xs) (sort (models s))
-          errAfter = absDiff (sort xs) (sort (models s'))
+          errBefore = euclideanDistanceSquared (sort xs) (sort (models s))
+          errAfter = euclideanDistanceSquared (sort xs) (sort (models s'))
 
-data IncompleteSOMandTargets = IncompleteSOMandTargets (SOM
-  (DecayingGaussian Double) Int (LGridMap HexHexGrid) (Int, Int)
-  TestPattern) [TestPattern] deriving Show
+data IncompleteSOMTestData
+  = IncompleteSOMTestData
+    {
+      som3 :: SOM Double Double (LGridMap HexHexGrid) Double (Int, Int) Double,
+      params3 :: DecayingGaussianParams Double,
+      trainingSet3 :: [Double]
+    }
 
-buildIncompleteSOMandTargets
-  :: Int -> [TestPattern] -> Double -> Double -> Double -> Double -> Int
-     -> [TestPattern] -> IncompleteSOMandTargets
-buildIncompleteSOMandTargets len ps r0 rf w0 wf tf targets =
-  IncompleteSOMandTargets s targets
+instance Show IncompleteSOMTestData where
+  show s = "buildIncompleteSOMTestData " ++ show (size . gridMap . som3 $ s)
+    ++ " " ++ show (elems . gridMap . som3 $ s)
+    ++ " " ++ show (params3 s) 
+    ++ " " ++ show (trainingSet3 s) 
+
+buildIncompleteSOMTestData
+  :: Int -> [Double] -> DecayingGaussianParams Double
+     -> [Double] -> IncompleteSOMTestData
+buildIncompleteSOMTestData len ps p@(DecayingGaussianParams r0 rf w0 wf tf) targets =
+  IncompleteSOMTestData s p targets
     where g = hexHexGrid len
           gm = lazyGridMap g ps
-          tf' = fromIntegral tf
-          s = SOM gm (DecayingGaussian r0 rf w0 wf tf') 0
+          fr = decayingGaussian r0 rf w0 wf tf
+          s = SOM gm fr absDifference adjustNum 0
 
--- | Same as sizedSOMandTargets, except some nodes don't have a value.
-sizedIncompleteSOMandTargets :: Int -> Gen IncompleteSOMandTargets
-sizedIncompleteSOMandTargets n = do
+-- | Same as sizedSOMTestData, except some nodes don't have a value.
+sizedIncompleteSOMTestData :: Int -> Gen IncompleteSOMTestData
+sizedIncompleteSOMTestData n = do
   sideLength <- choose (2, min (n+2) 5) --avoid long tests
   let tileCount = 3*sideLength*(sideLength-1) + 1
   numberOfPatterns <- choose (1,tileCount-1)
@@ -309,18 +296,18 @@ sizedIncompleteSOMandTargets n = do
   wf <- choose (0, w0)
   tf <- choose (1, 10)
   targets <- vectorOf numberOfPatterns arbitrary
-  return $ buildIncompleteSOMandTargets sideLength ps r0 rf w0 wf tf targets
+  return $ buildIncompleteSOMTestData sideLength ps (DecayingGaussianParams r0 rf w0 wf tf) targets
 
-instance Arbitrary IncompleteSOMandTargets where
-  arbitrary = sized sizedIncompleteSOMandTargets
+instance Arbitrary IncompleteSOMTestData where
+  arbitrary = sized sizedIncompleteSOMTestData
 
-prop_can_train_incomplete_SOM :: IncompleteSOMandTargets -> Property
-prop_can_train_incomplete_SOM (IncompleteSOMandTargets s xs) = errBefore /= 0 ==>
+prop_can_train_incomplete_SOM :: IncompleteSOMTestData -> Property
+prop_can_train_incomplete_SOM (IncompleteSOMTestData s _ xs) = errBefore /= 0 ==>
   errAfter < errBefore
     where (bmu, s') = classifyAndTrain s x
           x = head xs
-          errBefore = abs $ toDouble x - toDouble (gridMap s ! bmu)
-          errAfter = abs $ toDouble x - toDouble (gridMap s' ! bmu)
+          errBefore = abs $ x - (gridMap s ! bmu)
+          errAfter = abs $ x - (gridMap s' ! bmu)
 
 test :: Test
 test = testGroup "QuickCheck Data.Datamining.Clustering.SOM"

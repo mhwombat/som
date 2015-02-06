@@ -9,12 +9,11 @@ the prices into 4 clusters. The value associated with each tile is the
 model ("typical" price) of the houses in that cluster.
 -}
 
-import Codec.Image.DevIL (ilInit, readImage)
 import Control.Monad (foldM_, forM_, unless, replicateM)
 import Control.Monad.Random (evalRandIO, Rand, RandomGen, getRandomR)
 import Data.Datamining.Pattern (adjustVector,
-  euclideanDistanceSquared, Pattern(..))
-import Data.Datamining.Clustering.SOM (SOM(..), defaultSOM, toGridMap)
+  euclideanDistanceSquared)
+import Data.Datamining.Clustering.SOM (SOM(..), toGridMap, decayingGaussian)
 import Data.Datamining.Clustering.Classifier (Classifier, train, trainBatch)
 import Data.List (foldl')
 import Data.Word (Word8)
@@ -35,10 +34,12 @@ main :: IO ()
 main = do
   -- Build a self-organising map (SOM) initialised with small random values.
   c <- evalRandIO $ buildSOM (length inputData)
-  print c
+  putStr . show . map round . GM.elems . toGridMap $ c
   foldM_ trainAndPrint c inputData
 
-trainAndPrint :: SOM (LGridMap RectSquareGrid) (Int, Int) Price -> Price -> IO (SOM (LGridMap RectSquareGrid) (Int, Int) Price)
+trainAndPrint
+  :: SOM Double Double (LGridMap RectSquareGrid) Double (Int, Int) Price ->
+     Price -> IO (SOM Double Double (LGridMap RectSquareGrid) Double (Int, Int) Price)
 trainAndPrint c x = do
   let c2 = train c x
   putStr . show . map round . GM.elems . toGridMap $ c2
@@ -49,25 +50,30 @@ trainAndPrint c x = do
 -- I used random values here just to emphasise that the map organises
 -- itself. In practice, however, you could choose initial values that
 -- are spread evenly over the expected range of input values.
-buildSOM :: RandomGen r => Int -> Rand r (SOM (LGridMap RectSquareGrid) k Price)
+buildSOM
+  :: RandomGen r
+    => Int -> Rand r (SOM Double Double (LGridMap RectSquareGrid) Double (Int, Int) Price)
 buildSOM n = do
   let g = rectSquareGrid 1 4  -- The grid we'll use for our SOM
   ps <- replicateM (tileCount g) randomPrice -- random initial values
   let gm = lazyGridMap g ps -- a map from grid positions to prices
-  return $ defaultSOM gm 0.5 0.1 0.3 0.1 n
+  let n' = fromIntegral n
+  let lrf = decayingGaussian 0.5 0.1 0.3 0.1 n' -- learning rate function
+  return $ SOM gm lrf absDifference adjustNum 0
 
 randomPrice :: RandomGen r => Rand r Price
 randomPrice = getRandomR (0, 500000)
 
-instance Pattern Price where
-  type Metric Price = Double
-  difference x y = abs (x - y)
-  makeSimilar x amount y = y + amount*(x - y)
-
-instance Show (SOM (LGridMap RectSquareGrid) (Int, Int) Price) where
- show c = show . map round . GM.elems . toGridMap $ c
-
 type Price = Double
+
+absDifference :: Price -> Price -> Double
+absDifference x y = abs (x - y)
+
+adjustNum :: Price -> Double -> Price -> Price
+adjustNum target r x
+  | r < 0     = error "Negative learning rate"
+  | r > 1     = error "Learning rate > 1"
+  | otherwise = x + r*(target - x)
 
 -- Here's the data.
 -- It includes:

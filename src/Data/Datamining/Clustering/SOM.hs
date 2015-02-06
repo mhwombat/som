@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Datamining.Clustering.SOM
--- Copyright   :  (c) Amy de Buitléir 2012-2014
+-- Copyright   :  (c) Amy de Buitléir 2012-2015
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental
@@ -40,13 +40,15 @@ module Data.Datamining.Clustering.SOM
   (
     -- * Construction
     SOM(..),
-    DecayingGaussian(..),
     -- * Deconstruction
     toGridMap,
+    -- * Learning functions
+    decayingGaussian,
+    stepFunction,
+    constantFunction,
     -- * Advanced control
     trainNeighbourhood
   ) where
 
-import Data.Datamining.Clustering.SOMInternal (SOM(..),
-  DecayingGaussian(..), toGridMap, trainNeighbourhood)
+import Data.Datamining.Clustering.SOMInternal
 

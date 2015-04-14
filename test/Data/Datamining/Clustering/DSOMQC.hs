@@ -26,7 +26,6 @@ import Data.Datamining.Clustering.Classifier(classify,
   numModels, train, trainBatch)
 import Data.Datamining.Clustering.DSOMInternal
 
-import Control.Applicative ((<$>), (<*>))
 import Data.List (sort)
 import Math.Geometry.Grid (size)
 import Math.Geometry.Grid.Hexagonal (HexHexGrid, hexHexGrid)

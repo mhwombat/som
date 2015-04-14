@@ -20,7 +20,6 @@ module Data.Datamining.PatternQC
 
 import Data.Datamining.Pattern
 
-import Control.Applicative ((<$>), (<*>))
 import Test.Framework as TF (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose, 

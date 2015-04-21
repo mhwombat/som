@@ -45,7 +45,7 @@ data DSOM gm x k p = DSOM
     -- | A function which determines the how quickly the SOM learns.
     learningRate :: (x -> x -> x -> x),
     -- | A function which compares two patterns and returns a 
-    --   /non-negative/ numberrepresenting how different the patterns
+    --   /non-negative/ number representing how different the patterns
     --   are.
     --   A result of @0@ indicates that the patterns are identical.
     difference :: p -> p -> x,

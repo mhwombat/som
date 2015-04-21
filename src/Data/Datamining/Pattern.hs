@@ -19,6 +19,7 @@ module Data.Datamining.Pattern
     -- * Numeric vectors as patterns
     -- ** Raw vectors
     adjustVector,
+    adjustVectorPreserveLength,
     euclideanDistanceSquared,
     magnitudeSquared,
     -- ** Normalised vectors
@@ -61,18 +62,41 @@ magnitudeSquared xs =  sum $ map (\x -> x*x) xs
 euclideanDistanceSquared :: Num a => [a] -> [a] -> a
 euclideanDistanceSquared xs ys = magnitudeSquared $ zipWith (-) xs ys
 
--- | @'adjustVector' target amount vector@ adjusts @vector@ to move it
---   closer to @target@. The amount of adjustment is controlled by the
---   learning rate @r@, which is a number between 0 and 1. Larger values
---   of @r@ permit more adjustment. If @r@=1, the result will be
---   identical to the @target@. If @amount@=0, the result will be the
---   unmodified @pattern@.
+-- | @'adjustVector' target amount vector@ adjusts each element of
+--   @vector@ to move it closer to the corresponding element of
+--   @target@.
+--   The amount of adjustment is controlled by the learning rate
+--   @amount@, which is a number between 0 and 1.
+--   Larger values of @amount@ permit more adjustment.
+--   If @amount@=1, the result will be identical to the @target@.
+--   If @amount@=0, the result will be the unmodified @pattern@.
+--   If @target@ is shorter than @vector@, the result will be the same
+--   length as @target@.
+--   If @target@ is longer than @vector@, the result will be the same
+--   length as @vector@.
 adjustVector :: (Num a, Ord a, Eq a) => [a] -> a -> [a] -> [a]
-adjustVector xs r ys
+adjustVector ts r xs
   | r < 0     = error "Negative learning rate"
   | r > 1     = error "Learning rate > 1"
-  | r == 1     = xs
-  | otherwise = zipWith (adjustNum' r) xs ys
+  | r == 1     = ts
+  | otherwise = zipWith (adjustNum' r) ts xs
+
+-- | Same as @'adjustVector'@, except that the result will always be
+--   the same length as @vector@.
+--   This means that if @target@ is shorter than @vector@, the
+--   "leftover" elements of @vector@ will be copied the result,
+--   unmodified.
+adjustVectorPreserveLength :: (Num a, Ord a, Eq a) => [a] -> a -> [a] -> [a]
+adjustVectorPreserveLength ts r xs
+  | r < 0     = error "Negative learning rate"
+  | r > 1     = error "Learning rate > 1"
+  | r == 1     = ts
+  | otherwise = avpl ts r xs
+
+avpl :: (Num a, Ord a, Eq a) => [a] -> a -> [a] -> [a]
+avpl _ _ [] = []
+avpl [] _ x = x
+avpl (t:ts) r (x:xs) = (adjustNum' r t x) : (avpl ts r xs)
 
 -- | A vector that has been normalised, i.e., the magnitude of the
 --   vector = 1.

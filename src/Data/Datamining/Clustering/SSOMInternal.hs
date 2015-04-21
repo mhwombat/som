@@ -58,7 +58,7 @@ data SSOM t x k p = SSOM
     --   The learning rate should be between zero and one.
     learningRate :: t -> x,
     -- | A function which compares two patterns and returns a 
-    --   /non-negative/ numberrepresenting how different the patterns
+    --   /non-negative/ number representing how different the patterns
     --   are.
     --   A result of @0@ indicates that the patterns are identical.
     difference :: p -> p -> x,

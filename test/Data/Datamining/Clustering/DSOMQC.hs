@@ -10,8 +10,11 @@
 -- Tests
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleInstances,
-    FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults -fno-warn-orphans #-}
 
 module Data.Datamining.Clustering.DSOMQC
@@ -25,6 +28,11 @@ import Data.Datamining.Clustering.Classifier(classify,
   classifyAndTrain, differences, diffAndTrain, models,
   numModels, train, trainBatch)
 import Data.Datamining.Clustering.DSOMInternal
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative
+#endif
 
 import Data.List (sort)
 import Math.Geometry.Grid (size)

@@ -10,7 +10,9 @@
 -- Tests
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE MultiParamTypeClasses, TypeFamilies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults -fno-warn-orphans #-}
 
 module Data.Datamining.PatternQC
@@ -24,6 +26,11 @@ import Test.Framework as TF (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose, 
   Property, property, sized, vector)
+
+#if MIN_VERSION_base(4,8,0)
+#else
+import Control.Applicative
+#endif
 
 newtype UnitInterval = FromDouble Double deriving Show
 

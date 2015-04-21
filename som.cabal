@@ -1,5 +1,5 @@
 Name:              som
-Version:           8.0.2
+Version:           8.0.3
 Stability:         experimental
 Synopsis:          Self-Organising Maps.
 Description:       A Kohonen Self-organising Map (SOM) maps input patterns 
@@ -33,12 +33,12 @@ source-repository head
 source-repository this
   type:     git
   location: https://github.com/mhwombat/som.git
-  tag:      8.0.2
+  tag:      8.0.3
 
 
 library
   hs-source-dirs:  src
-  build-depends:   base ==4.* && >=4.8,
+  build-depends:   base ==4.*,
                    containers ==0.5.*,
                    grid ==7.* && >=7.7,
                    MonadRandom ==0.3.*
@@ -54,7 +54,7 @@ library
 
 test-suite som-tests
   type:            exitcode-stdio-1.0
-  build-depends:   base ==4.* && >=4.8,
+  build-depends:   base ==4.*,
                    test-framework-quickcheck2 == 0.3.*,
                    QuickCheck ==2.7.*,
                    test-framework ==0.8.*,

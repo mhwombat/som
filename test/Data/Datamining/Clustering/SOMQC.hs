@@ -65,8 +65,8 @@ prop_DecayingGaussian_starts_at_w0 (DecayingGaussianParams r0 rf w0 wf tf)
   = property $
     decayingGaussian r0 rf w0 wf tf 0 inside >= r0 * exp (-0.5)
       && decayingGaussian r0 rf w0 wf tf 0 outside < r0 * exp (-0.5)
-  where inside = w0 - 0.001
-        outside = w0 + 0.001
+  where inside = w0 * 0.99999
+        outside = w0 * 1.00001
 
 prop_DecayingGaussian_decays_to_rf
   :: DecayingGaussianParams Double -> Property
@@ -79,8 +79,8 @@ prop_DecayingGaussian_shrinks_to_wf (DecayingGaussianParams r0 rf w0 wf tf)
   = property $
     decayingGaussian r0 rf w0 wf tf tf inside >= rf * exp (-0.5)
       && decayingGaussian r0 rf w0 wf tf tf outside < rf * exp (-0.5)
-  where inside = wf - 0.001
-        outside = wf + 0.001
+  where inside = wf * 0.99999
+        outside = wf * 1.00001
 
 fractionDiff :: [Double] -> [Double] -> Double
 fractionDiff xs ys = if denom == 0 then 0 else d / denom

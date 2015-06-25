@@ -12,10 +12,11 @@
 --
 ------------------------------------------------------------------------
 {-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances,
-    MultiParamTypeClasses, DeriveGeneric #-}
+    MultiParamTypeClasses, DeriveAnyClass, DeriveGeneric #-}
 
 module Data.Datamining.Clustering.SSOMInternal where
 
+import Control.DeepSeq (NFData)
 import Data.List (foldl', minimumBy)
 import Data.Ord (comparing)
 import Data.Datamining.Clustering.Classifier(Classifier(..))
@@ -33,9 +34,6 @@ import Prelude hiding (lookup)
 --   * 0 < r0 < 1
 --
 --   * 0 < d
---
---   where << means "is much smaller than" (not the Haskell @<<@
---   operator!)
 exponential :: Floating a => a -> a -> a -> a
 exponential r0 d t = r0 * exp (-d*t)
 
@@ -77,7 +75,7 @@ data SSOM t x k p = SSOM
     --   directly modify it, then the counter will represent the number
     --   of patterns that this SSOM has classified.
     counter :: t
-  } deriving (Generic)
+  } deriving (Generic, NFData)
 
 -- | Extracts the current models from the SSOM.
 --   A synonym for @'sMap'@.

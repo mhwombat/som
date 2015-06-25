@@ -12,13 +12,15 @@
 --
 ------------------------------------------------------------------------
 {-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances,
-    MultiParamTypeClasses #-}
+    MultiParamTypeClasses, DeriveAnyClass, DeriveGeneric #-}
 
 module Data.Datamining.Clustering.DSOMInternal where
 
+import Control.DeepSeq (NFData)
 import qualified Data.Foldable as F (Foldable, foldr)
 import Data.List (foldl', minimumBy)
 import Data.Ord (comparing)
+import GHC.Generics (Generic)
 import qualified Math.Geometry.Grid as G (Grid(..), FiniteGrid(..))
 import qualified Math.Geometry.GridMap as GM (GridMap(..))
 import Data.Datamining.Clustering.Classifier(Classifier(..))
@@ -59,7 +61,7 @@ data DSOM gm x k p = DSOM
     --   If @amount@=1, the result should be identical to the @target@.
     --   If @amount@=0, the result should be the unmodified @pattern@.
     makeSimilar :: p -> x -> p -> p
-  }
+  } deriving (Generic, NFData)
 
 instance (F.Foldable gm) => F.Foldable (DSOM gm x k) where
   foldr f x g = F.foldr f x (gridMap g)

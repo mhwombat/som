@@ -23,7 +23,7 @@ import Data.Datamining.Pattern (euclideanDistanceSquared, adjustNum,
   absDifference)
 import Data.Datamining.Clustering.Classifier(classify,
   classifyAndTrain, reportAndTrain, differences, diffAndTrain, models,
-  train, trainBatch)
+  train, trainBatch, numModels)
 import Data.Datamining.Clustering.SSOMInternal
 import qualified Data.Map.Strict as M
 
@@ -137,6 +137,15 @@ prop_trainNodeEquiv (SSOMTestData s _ ps) = property $
     where p = head ps
           s1 = trainNode s (classify s p) p
           s2 = train s p
+
+prop_train_node_only_modifies_one_model :: Int -> SSOMTestData -> Property
+prop_train_node_only_modifies_one_model n (SSOMTestData s _ ps)
+  = property $ as == as' && bs == bs'
+    where p = head ps
+          k = n `mod` (numModels s)
+          s' = trainNode s k p
+          (as, _:bs) = splitAt k (models s)
+          (as', _:bs') = splitAt k (models s')
 
 -- | The training set consists of the same vectors in the same order,
 --   several times over. So the resulting classifications should consist
@@ -266,6 +275,8 @@ test = testGroup "QuickCheck Data.Datamining.Clustering.SSOM"
       prop_classifyAndTrainEquiv,
     testProperty "prop_diffAndTrainEquiv" prop_diffAndTrainEquiv,
     testProperty "prop_trainNodeEquiv" prop_trainNodeEquiv,
+    testProperty "prop_train_node_only_modifies_one_model"
+      prop_train_node_only_modifies_one_model,
     testProperty "prop_batch_training_works" prop_batch_training_works,
     testProperty "prop_classification_is_consistent"
       prop_classification_is_consistent,

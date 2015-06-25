@@ -12,10 +12,11 @@
 --
 ------------------------------------------------------------------------
 {-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances,
-    MultiParamTypeClasses, DeriveGeneric #-}
+    MultiParamTypeClasses, DeriveAnyClass, DeriveGeneric #-}
 
 module Data.Datamining.Clustering.SOMInternal where
 
+import Control.DeepSeq (NFData)
 import qualified Data.Foldable as F (Foldable, foldr)
 import Data.List (foldl', minimumBy)
 import Data.Ord (comparing)
@@ -111,7 +112,7 @@ data SOM t d gm x k p = SOM
     --   directly modify it, then the counter will represent the number
     --   of patterns that this SOM has classified.
     counter :: t
-  } deriving (Generic)
+  } deriving (Generic, NFData)
 
 instance (F.Foldable gm) => F.Foldable (SOM t d gm x k) where
   foldr f x g = F.foldr f x (gridMap g)

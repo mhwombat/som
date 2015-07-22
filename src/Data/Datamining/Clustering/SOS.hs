@@ -39,12 +39,20 @@ module Data.Datamining.Clustering.SOS
   (
     -- * Construction
     SOS(..),
+    makeSOS,
     -- * Deconstruction
-    toMap,
-    -- * Learning functions
+    time,
+    isEmpty,
+    numModels,
+    modelMap,
+    counterMap,
+    -- models,
+    -- counters,
+    -- * Learning and classification
     exponential,
-    -- * Advanced control
-    trainNode
+    classify,
+    train,
+    trainBatch
   ) where
 
 import Data.Datamining.Clustering.SOSInternal

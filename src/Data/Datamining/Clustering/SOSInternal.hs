@@ -16,12 +16,11 @@
 
 module Data.Datamining.Clustering.SOSInternal where
 
-import Prelude hiding (lookup, null)
+import Prelude hiding (lookup)
 
 import Control.DeepSeq (NFData)
-import Data.List (foldl', minimumBy)
+import Data.List (minimumBy, foldl')
 import Data.Ord (comparing)
-import Data.Datamining.Clustering.Classifier(Classifier(..))
 import qualified Data.Map.Strict as M
 import GHC.Generics (Generic)
 
@@ -47,7 +46,7 @@ exponential r0 d t = r0 * exp (-d*t')
 data SOS t x k p = SOS
   {
     -- | Maps patterns and match counts to nodes.
-    sMap :: M.Map k (p, t),
+    toMap :: M.Map k (p, t),
     -- | A function which determines the learning rate for a node.
     --   The input parameter indicates how many patterns (or pattern
     --   batches) have previously been presented to the classifier.
@@ -80,6 +79,18 @@ data SOS t x k p = SOS
     nextIndex :: k
   } deriving (Generic, NFData)
 
+-- @'makeSOS' lr n dt diff ms@ creates a new SOS that does not (yet)
+-- contain any models.
+-- It will learn at the rate determined by the learning function @lr@,
+-- and will be able to hold up to @n@ models.
+-- It will create a new model based on a pattern presented to it when
+-- (1) the SOS contains no models, or
+-- (2) the difference between the pattern and the closest matching
+-- model exceeds the threshold @dt@.
+-- It will use the function @diff@ to measure the similarity between
+-- an input pattern and a model.
+-- It will use the function @ms@ to adjust models as needed to make
+-- them more similar to input patterns.
 makeSOS
   :: Bounded k
     => (t -> x) -> Int -> x -> (p -> p -> x) -> (p -> x -> p -> p)
@@ -87,43 +98,58 @@ makeSOS
 makeSOS lr n dt diff ms = SOS M.empty lr n dt diff ms minBound
 
 -- | Returns true if the SOS has no models, false otherwise.
-null  :: SOS t x k p -> Bool
-null = M.null . sMap
+isEmpty :: SOS t x k p -> Bool
+isEmpty = M.null . toMap
 
--- | Extracts the current models from the SOS.
-toMap :: SOS t x k p -> M.Map k p
-toMap = M.map fst . sMap
+-- | Returns the number of models the SOS currently contains.
+numModels :: SOS t x k p -> Int
+numModels = length . M.keys . toMap
+
+-- | Returns a map from node ID to model.
+modelMap :: SOS t x k p -> M.Map k p
+modelMap = M.map fst . toMap
+
+-- | Returns a map from node ID to counter (number of times the
+--   node's model has been the closest match to an input pattern).
+counterMap :: SOS t x k p -> M.Map k t
+counterMap = M.map snd . toMap
+
+-- | Returns the current models.
+models :: SOS t x k p -> [p]
+models = map fst . M.elems . toMap
+
+-- | Returns the current counters (number of times the
+--   node's model has been the closest match to an input pattern).
+counters :: SOS t x k p -> [t]
+counters = map snd . M.elems . toMap
 
 -- | The current "time" (number of times the SOS has been trained).
 time :: Num t => SOS t x k p -> t
-time = sum . map snd . M.elems . sMap
-
-counters :: SOS t x k p -> M.Map k t
-counters = M.map snd . sMap
+time = sum . map snd . M.elems . toMap
 
 -- | Adds a new node to the SOS.
 addNode
   :: (Num t, Enum k, Ord k)
-    => p -> SOS t x k p -> SOS t x k p
-addNode p s = if numModels' s >= maxSize s
+    => p -> SOS t x k p -> (k, SOS t x k p)
+addNode p s = if numModels s >= maxSize s
                 then error "SOS is full"
-                else s { sMap=gm', nextIndex=succ k }
-  where gm = sMap s
+                else (k, s { toMap=gm', nextIndex=succ k })
+  where gm = toMap s
         k = nextIndex s
         gm' = M.insert k (p, 0) gm
 
 -- | Removes a node from the SOS.
 --   Deleted nodes are never re-used.
 deleteNode :: Ord k => k -> SOS t x k p -> SOS t x k p
-deleteNode k s = s { sMap=gm' }
-  where gm = sMap s
+deleteNode k s = s { toMap=gm' }
+  where gm = toMap s
         gm' = if M.member k gm
                 then M.delete k gm
                 else error "no such node"
 
 incrementCounter :: (Num t, Ord k) => k -> SOS t x k p -> SOS t x k p
-incrementCounter k s = s { sMap=gm' }
-  where gm = sMap s
+incrementCounter k s = s { toMap=gm' }
+  where gm = toMap s
         gm' = if M.member k gm
                 then M.adjust inc k gm
                 else error "no such node"
@@ -135,59 +161,66 @@ incrementCounter k s = s { sMap=gm' }
 trainNode
   :: (Num t, Ord k)
     => SOS t x k p -> k -> p -> SOS t x k p
-trainNode s k target = s { sMap=gm' }
-  where gm = sMap s
+trainNode s k target = s { toMap=gm' }
+  where gm = toMap s
         gm' = M.adjust tweakModel k gm
         r = (learningRate s) (time s)
         tweakModel (p, t) = (makeSimilar s target r p, t)
 
 leastUsefulNode :: Ord t => SOS t x k p -> k
-leastUsefulNode s = if null s
+leastUsefulNode s = if isEmpty s
                       then error "SOS has no nodes"
-                      else fst . findMinValue . counters $ s
+                      else fst . minimumBy (comparing (snd . snd))
+                             . M.toList . toMap $ s
 
 deleteLeastUsefulNode :: (Ord t, Ord k) => SOS t x k p -> SOS t x k p
 deleteLeastUsefulNode s = deleteNode k s
   where k = leastUsefulNode s
 
-addModel :: (Num t, Ord t, Enum k, Ord k) => p -> SOS t x k p -> SOS t x k p
+addModel
+  :: (Num t, Ord t, Enum k, Ord k)
+    => p -> SOS t x k p -> (k, SOS t x k p)
 addModel p s = addNode p s'
-  where s' = if numModels' s >= maxSize s
+  where s' = if numModels s >= maxSize s
                 then deleteLeastUsefulNode s
                 else s
 
--- | Finds the node whose model that best matches the pattern.
---   Returns the index of the node, and the difference between the
---   model and the pattern.
-findBMU :: Ord x => SOS t x k p -> p -> (k, x)
-findBMU s p = findMinValue . M.map (difference s p) $ toMap s
+reportAddModel
+  :: (Num t, Ord t, Num x, Enum k, Ord k)
+    => SOS t x k p -> p -> (k, x, [(k, x)], SOS t x k p)
+reportAddModel s p = (k, 0, [(k, 0)], s')
+  where (k, s') = addModel p s
 
-justTrain
-  :: (Num t, Ord t, Ord x, Enum k, Ord k)
+-- | @'classify' s p@ identifies the model @s@ that most closely
+--   matches the pattern @p@.
+--   If necessary, it will create a new node and model.
+--   Returns the ID of the node with the best matching model,
+--   the difference between the best matching model and the pattern,
+--   the differences between the input and each model in the SOS,
+--   and the (possibly updated) SOS.
+classify
+  :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
+    => SOS t x k p -> p -> (k, x, [(k, x)], SOS t x k p)
+classify s p
+  | isEmpty s                 = reportAddModel s p
+  | bmuDiff > diffThreshold s = reportAddModel s p
+  | otherwise                 = (bmu, bmuDiff, diffs, s)
+  where (bmu, bmuDiff) = minimumBy (comparing snd) diffs
+        diffs = M.toList . M.map (difference s p) . M.map fst
+                    . toMap $ s
+
+-- | @'train' s p@ identifies the model in @s@ that most closely
+--   matches @p@, and updates it to be a somewhat better match.
+train
+  :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
     => SOS t x k p -> p -> SOS t x k p
-justTrain s p = incrementCounter bmu2 s2
-  where s1 = if null s then addModel p s else s
-        (bmu, diff) = findBMU s1 p
-        s2 = if diff > diffThreshold s
-               then addModel p s1
-               else trainNode s1 bmu p
-        (bmu2, _) = findBMU s2 p
+train s p = trainNode s' bmu p
+  where (bmu, _, _, s') = classify s p
 
-numModels' :: SOS t x k p -> Int
-numModels' = length . M.keys . sMap
-
-instance
-  (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
-    => Classifier (SOS t) x k p where
-  toList = M.toList . toMap
-  numModels = numModels'
-  models = M.elems . toMap
-  differences s p = M.toList . M.map (difference s p) $ toMap s
-  trainBatch s = foldl' justTrain s
-  reportAndTrain s p = (bmu, ds, s')
-    where ds = differences s p
-          bmu = fst $ minimumBy (comparing snd) ds
-          s' = trainNode s bmu $ p
-
-findMinValue :: Ord a => M.Map k a -> (k, a)
-findMinValue = minimumBy (comparing snd) . M.toList
+-- | For each pattern @p@ in @ps@, @'trainBatch' s ps@ identifies the
+--   model in @s@ that most closely matches @p@,
+--   and updates it to be a somewhat better match.
+trainBatch
+  :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
+    => SOS t x k p -> [p] -> SOS t x k p
+trainBatch = foldl' train

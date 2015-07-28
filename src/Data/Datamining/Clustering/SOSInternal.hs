@@ -60,7 +60,7 @@ data SOS t x k p = SOS
     maxSize :: Int,
     -- | The threshold that triggers creation of a new model.
     diffThreshold :: x,
-    -- | A function which compares two patterns and returns a 
+    -- | A function which compares two patterns and returns a
     --   /non-negative/ number representing how different the patterns
     --   are.
     --   A result of @0@ indicates that the patterns are identical.
@@ -95,7 +95,10 @@ makeSOS
   :: Bounded k
     => (t -> x) -> Int -> x -> (p -> p -> x) -> (p -> x -> p -> p)
       -> SOS t x k p
-makeSOS lr n dt diff ms = SOS M.empty lr n dt diff ms minBound
+makeSOS lr n dt diff ms =
+  if n <= 0
+    then error "max size for SOS <= 0"
+    else SOS M.empty lr n dt diff ms minBound
 
 -- | Returns true if the SOS has no models, false otherwise.
 isEmpty :: SOS t x k p -> Bool

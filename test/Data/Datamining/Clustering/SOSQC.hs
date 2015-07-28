@@ -74,7 +74,7 @@ buildTestSOS r0 d maxSz dt ps = TestSOS s' desc
                  ++ " " ++ show dt
                  ++ " " ++ show ps
         s' = trainBatch s ps
-  
+
 sizedTestSOS :: Int -> Gen TestSOS
 sizedTestSOS n = do
   maxSz <- choose (1, n+1)
@@ -84,7 +84,7 @@ sizedTestSOS n = do
   dt <- choose (0, 1)
   ps <- vectorOf numPatterns arbitrary
   return $ buildTestSOS r0 d maxSz dt ps
-  
+
 instance Arbitrary TestSOS where
   arbitrary = sized sizedTestSOS
 
@@ -118,8 +118,8 @@ prop_train_only_modifies_one_model (TestSOS s _) p
   = numModels s < maxSize s ==> otherModelsBefore == otherModelsAfter
     where (bmu, _, _, s2) = classify s p
           s3 = train s2 p
-          otherModelsBefore = M.delete bmu . M.map fst . sMap $ s2
-          otherModelsAfter = M.delete bmu . M.map fst . sMap $ s3
+          otherModelsBefore = M.delete bmu . M.map fst . toMap $ s2
+          otherModelsAfter = M.delete bmu . M.map fst . toMap $ s3
 
 -- | The training set consists of the same vectors in the same order,
 --   several times over. So the resulting classifications should consist

@@ -88,6 +88,14 @@ sizedTestSOS n = do
 instance Arbitrary TestSOS where
   arbitrary = sized sizedTestSOS
 
+prop_classify_increments_counter :: TestSOS -> Double -> Property
+prop_classify_increments_counter (TestSOS s _) x
+  = numModels s < maxSize s ==>
+    countAfter == countBefore + 1
+  where countBefore = time s
+        countAfter = time s'
+        (_, _, _, s') = classify s x
+
 prop_trainNode_reduces_diff :: TestSOS -> Double -> Property
 prop_trainNode_reduces_diff (TestSOS s _) x = not (isEmpty s) ==>
   diffAfter < diffBefore || diffBefore == 0
@@ -120,6 +128,13 @@ prop_train_only_modifies_one_model (TestSOS s _) p
           s3 = train s2 p
           otherModelsBefore = M.delete bmu . M.map fst . toMap $ s2
           otherModelsAfter = M.delete bmu . M.map fst . toMap $ s3
+
+prop_train_increments_counter :: TestSOS -> Double -> Property
+prop_train_increments_counter (TestSOS s _) x
+  = numModels s < maxSize s ==>
+    countAfter == countBefore + 1
+  where countBefore = time s
+        countAfter = time $ train s x
 
 -- | The training set consists of the same vectors in the same order,
 --   several times over. So the resulting classifications should consist
@@ -159,6 +174,8 @@ test = testGroup "QuickCheck Data.Datamining.Clustering.SOS"
       prop_Exponential_starts_at_r0,
     testProperty "prop_Exponential_ge_0"
       prop_Exponential_ge_0,
+    testProperty "prop_classify_increments_counter"
+      prop_classify_increments_counter,
     testProperty "prop_trainNode_reduces_diff"
       prop_trainNode_reduces_diff,
     testProperty "prop_diff_lt_threshold_after_training"
@@ -167,6 +184,8 @@ test = testGroup "QuickCheck Data.Datamining.Clustering.SOS"
       prop_training_reduces_diff,
     testProperty "prop_train_only_modifies_one_model"
       prop_train_only_modifies_one_model,
+    testProperty "prop_train_increments_counter"
+      prop_train_increments_counter,
     testProperty "prop_batch_training_works" prop_batch_training_works,
     testProperty "prop_classification_is_consistent"
       prop_classification_is_consistent,

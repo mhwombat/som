@@ -191,8 +191,9 @@ addModel p s = addNode p s'
 reportAddModel
   :: (Num t, Ord t, Num x, Enum k, Ord k)
     => SOS t x k p -> p -> (k, x, [(k, x)], SOS t x k p)
-reportAddModel s p = (k, 0, [(k, 0)], s')
+reportAddModel s p = (k, 0, [(k, 0)], s'')
   where (k, s') = addModel p s
+        s'' = incrementCounter k s'
 
 -- | @'classify' s p@ identifies the model @s@ that most closely
 --   matches the pattern @p@.
@@ -207,10 +208,11 @@ classify
 classify s p
   | isEmpty s                 = reportAddModel s p
   | bmuDiff > diffThreshold s = reportAddModel s p
-  | otherwise                 = (bmu, bmuDiff, diffs, s)
+  | otherwise                 = (bmu, bmuDiff, diffs, s')
   where (bmu, bmuDiff) = minimumBy (comparing snd) diffs
         diffs = M.toList . M.map (difference s p) . M.map fst
                     . toMap $ s
+        s' = incrementCounter bmu s
 
 -- | @'train' s p@ identifies the model in @s@ that most closely
 --   matches @p@, and updates it to be a somewhat better match.

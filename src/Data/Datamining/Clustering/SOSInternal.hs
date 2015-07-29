@@ -39,8 +39,8 @@ exponential r0 d t = r0 * exp (-d*t')
   where t' = fromIntegral t
 
 -- | A Simplified Self-Organising Map (SOS).
---   @x@ is the type of the learning rate and the difference metric.
 --   @t@ is the type of the counter.
+--   @x@ is the type of the learning rate and the difference metric.
 --   @k@ is the type of the model indices.
 --   @p@ is the type of the input patterns and models.
 data SOS t x k p = SOS
@@ -133,10 +133,10 @@ time = sum . map snd . M.elems . toMap
 -- | Adds a new node to the SOS.
 addNode
   :: (Num t, Enum k, Ord k)
-    => p -> SOS t x k p -> (k, SOS t x k p)
+    => p -> SOS t x k p -> SOS t x k p
 addNode p s = if numModels s >= maxSize s
                 then error "SOS is full"
-                else (k, s { toMap=gm', nextIndex=succ k })
+                else s { toMap=gm', nextIndex=succ k }
   where gm = toMap s
         k = nextIndex s
         gm' = M.insert k (p, 0) gm
@@ -182,18 +182,18 @@ deleteLeastUsefulNode s = deleteNode k s
 
 addModel
   :: (Num t, Ord t, Enum k, Ord k)
-    => p -> SOS t x k p -> (k, SOS t x k p)
+    => p -> SOS t x k p -> SOS t x k p
 addModel p s = addNode p s'
   where s' = if numModels s >= maxSize s
                 then deleteLeastUsefulNode s
                 else s
 
-reportAddModel
-  :: (Num t, Ord t, Num x, Enum k, Ord k)
-    => SOS t x k p -> p -> (k, x, [(k, x)], SOS t x k p)
-reportAddModel s p = (k, 0, [(k, 0)], s'')
-  where (k, s') = addModel p s
-        s'' = incrementCounter k s'
+-- reportAddModel
+--   :: (Num t, Ord t, Num x, Enum k, Ord k)
+--     => SOS t x k p -> p -> (k, x, [(k, x)], SOS t x k p)
+-- reportAddModel s p = (k, 0, [(k, 0)], s'')
+--   where (k, s') = addModel p s
+--         s'' = incrementCounter k s'
 
 -- | @'classify' s p@ identifies the model @s@ that most closely
 --   matches the pattern @p@.
@@ -206,8 +206,8 @@ classify
   :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
     => SOS t x k p -> p -> (k, x, [(k, x)], SOS t x k p)
 classify s p
-  | isEmpty s                 = reportAddModel s p
-  | bmuDiff > diffThreshold s = reportAddModel s p
+  | isEmpty s                 = classify (addModel p s) p
+  | bmuDiff > diffThreshold s = classify (addModel p s) p
   | otherwise                 = (bmu, bmuDiff, diffs, s')
   where (bmu, bmuDiff) = minimumBy (comparing snd) diffs
         diffs = M.toList . M.map (difference s p) . M.map fst

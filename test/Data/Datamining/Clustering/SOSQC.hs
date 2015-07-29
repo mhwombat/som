@@ -21,8 +21,10 @@ module Data.Datamining.Clustering.SOSQC
 
 import Data.Datamining.Pattern (adjustNum, absDifference)
 import Data.Datamining.Clustering.SOSInternal
+import Data.List (minimumBy)
 import qualified Data.Map.Strict as M
-
+import Data.Ord (comparing)
+import Data.Word (Word16)
 import System.Random (Random)
 import Test.Framework as TF (Test, testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
@@ -59,7 +61,7 @@ prop_Exponential_ge_0 r0 d t = property $ exponential r0' d' t' >= 0
 positive :: (Num a, Ord a, Arbitrary a) => Gen a
 positive = arbitrary `suchThat` (> 0)
 
-data TestSOS = TestSOS (SOS Int Double Int Double) String
+data TestSOS = TestSOS (SOS Int Double Word16 Double) String
 
 instance Show TestSOS where
   show (TestSOS _ desc) = desc
@@ -68,7 +70,7 @@ buildTestSOS
   :: Double -> Double -> Int -> Double -> [Double] -> TestSOS
 buildTestSOS r0 d maxSz dt ps = TestSOS s' desc
   where lrf = exponential r0 d
-        s = makeSOS lrf maxSz dt absDifference adjustNum :: SOS Int Double Int Double
+        s = makeSOS lrf maxSz dt absDifference adjustNum
         desc = "buildTestSOS " ++ show r0 ++ " " ++ show d
                  ++ " " ++ show maxSz
                  ++ " " ++ show dt
@@ -90,11 +92,18 @@ instance Arbitrary TestSOS where
 
 prop_classify_increments_counter :: TestSOS -> Double -> Property
 prop_classify_increments_counter (TestSOS s _) x
-  = numModels s < maxSize s ==>
-    countAfter == countBefore + 1
+  = numModels s < maxSize s ==> countAfter == countBefore + 1
+  -- We have to check if the SOS is full, otherwise we'll replace an
+  -- existing model (and its counter), which means that the total
+  -- count could change by an arbitrary amount.
   where countBefore = time s
         countAfter = time s'
         (_, _, _, s') = classify s x
+
+prop_classify_chooses_best_fit :: TestSOS -> Double -> Property
+prop_classify_chooses_best_fit (TestSOS s _) x
+  = property $ bmu == fst (minimumBy (comparing snd) diffs)
+  where (bmu, _, diffs, _) = classify s x
 
 prop_trainNode_reduces_diff :: TestSOS -> Double -> Property
 prop_trainNode_reduces_diff (TestSOS s _) x = not (isEmpty s) ==>
@@ -131,8 +140,10 @@ prop_train_only_modifies_one_model (TestSOS s _) p
 
 prop_train_increments_counter :: TestSOS -> Double -> Property
 prop_train_increments_counter (TestSOS s _) x
-  = numModels s < maxSize s ==>
-    countAfter == countBefore + 1
+  = numModels s < maxSize s ==> countAfter == countBefore + 1
+  -- We have to check if the SOS is full, otherwise we'll replace an
+  -- existing model (and its counter), which means that the total
+  -- count could change by an arbitrary amount.
   where countBefore = time s
         countAfter = time $ train s x
 
@@ -141,10 +152,14 @@ prop_train_increments_counter (TestSOS s _) x
 --   of the same integers in the same order, over and over.
 prop_batch_training_works :: TestSOS -> [Double] -> Property
 prop_batch_training_works (TestSOS s _) ps
-  = maxSize s > length ps
-    ==> classifications == (concat . replicate 5) firstSet
+  -- = maxSize s > length ps
+  --   ==> classifications == (concat . replicate 5) firstSet
+  = property $ classifications == (concat . replicate 5) firstSet
   where trainingSet = (concat . replicate 5) ps
-        s' = trainBatch s trainingSet
+        sRightSize = if maxSize s >= length ps
+          then s
+          else s { maxSize=length ps + 1}
+        s' = trainBatch sRightSize trainingSet
         classifications = map (justBMU . classify s') trainingSet
         justBMU = \(bmu, _, _, _) -> bmu
         firstSet = take (length ps) classifications
@@ -176,6 +191,8 @@ test = testGroup "QuickCheck Data.Datamining.Clustering.SOS"
       prop_Exponential_ge_0,
     testProperty "prop_classify_increments_counter"
       prop_classify_increments_counter,
+    testProperty "prop_classify_chooses_best_fit"
+      prop_classify_chooses_best_fit,
     testProperty "prop_trainNode_reduces_diff"
       prop_trainNode_reduces_diff,
     testProperty "prop_diff_lt_threshold_after_training"

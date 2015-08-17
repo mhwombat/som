@@ -21,7 +21,7 @@ module Data.Datamining.Clustering.SOSQC
 
 import Data.Datamining.Pattern (adjustNum, absDifference)
 import Data.Datamining.Clustering.SOSInternal
-import Data.List (minimumBy)
+import Data.List ((\\), minimumBy)
 import qualified Data.Map.Strict as M
 import Data.Ord (comparing)
 import Data.Word (Word16)
@@ -67,13 +67,14 @@ instance Show TestSOS where
   show (TestSOS _ desc) = desc
 
 buildTestSOS
-  :: Double -> Double -> Int -> Double -> [Double] -> TestSOS
-buildTestSOS r0 d maxSz dt ps = TestSOS s' desc
+  :: Double -> Double -> Int -> Double -> Bool -> [Double] -> TestSOS
+buildTestSOS r0 d maxSz dt ad ps = TestSOS s' desc
   where lrf = exponential r0 d
-        s = makeSOS lrf maxSz dt absDifference adjustNum
+        s = makeSOS lrf maxSz dt ad absDifference adjustNum
         desc = "buildTestSOS " ++ show r0 ++ " " ++ show d
                  ++ " " ++ show maxSz
                  ++ " " ++ show dt
+                 ++ " " ++ show ad
                  ++ " " ++ show ps
         s' = trainBatch s ps
 
@@ -84,8 +85,9 @@ sizedTestSOS n = do
   r0 <- choose (0, 1)
   d <- positive
   dt <- choose (0, 1)
+  ad <- arbitrary
   ps <- vectorOf numPatterns arbitrary
-  return $ buildTestSOS r0 d maxSz dt ps
+  return $ buildTestSOS r0 d maxSz dt ad ps
 
 instance Arbitrary TestSOS where
   arbitrary = sized sizedTestSOS
@@ -115,7 +117,7 @@ prop_trainNode_reduces_diff (TestSOS s _) x = not (isEmpty s) ==>
 
 prop_diff_lt_threshold_after_training :: TestSOS -> Double -> Property
 prop_diff_lt_threshold_after_training (TestSOS s _) x =
-  property $ diffAfter < diffThreshold s
+  numModels s < maxSize s ==> diffAfter < diffThreshold s
   where s' = train s x
         (_, diffAfter, _, _) = classify s' x
 
@@ -173,14 +175,41 @@ prop_classification_is_consistent (TestSOS s _) x
         s3 = train s2 x
         (bmu', _, _, _) = classify s3 x
 
-prop_classification_stabilises
-  :: TestSOS -> [Double] -> Property
+prop_classification_results_are_consistent
+  :: TestSOS -> Double -> Property
+prop_classification_results_are_consistent (TestSOS s _) x
+  = property $ bmu == fst (minimumBy (comparing snd) diffs)
+  where (bmu, _, diffs, _) = classify s x
+
+prop_classification_results_are_consistent2
+  :: TestSOS -> Double -> Property
+prop_classification_results_are_consistent2 (TestSOS s _) x
+  = property $ bmuDiff == snd (minimumBy (comparing snd) diffs)
+  where (_, bmuDiff, diffs, _) = classify s x
+
+prop_classification_stabilises :: TestSOS -> [Double] -> Property
 prop_classification_stabilises (TestSOS s _)  ps
   = (not . null $ ps) && maxSize s > length ps ==> k2 == k1
   where sStable = trainBatch s . concat . replicate 10 $ ps
         (k1, _, _, sStable2) = classify sStable (head ps)
         sStable3 = trainBatch sStable2 ps
         (k2, _, _, _) = classify sStable3 (head ps)
+
+prop_models_not_deleted_unless_allowed
+  :: TestSOS -> Double -> Property
+prop_models_not_deleted_unless_allowed (TestSOS s _) x =
+  (not . allowDeletion $ s) ==> null (labelsBefore \\ labelsAfter)
+  where labelsBefore = M.keys $ modelMap s
+        labelsAfter = M.keys $ modelMap s'
+        (_, _, _, s') = classify s x
+
+prop_models_not_deleted_unless_allowed2
+  :: TestSOS -> Double -> Property
+prop_models_not_deleted_unless_allowed2 (TestSOS s _) x =
+  (not . allowDeletion $ s) ==> null (labelsBefore \\ labelsAfter)
+  where labelsBefore = M.keys $ modelMap s
+        labelsAfter = M.keys $ modelMap s'
+        s' = train s x
 
 test :: Test
 test = testGroup "QuickCheck Data.Datamining.Clustering.SOS"
@@ -206,6 +235,14 @@ test = testGroup "QuickCheck Data.Datamining.Clustering.SOS"
     testProperty "prop_batch_training_works" prop_batch_training_works,
     testProperty "prop_classification_is_consistent"
       prop_classification_is_consistent,
+    testProperty "prop_classification_results_are_consistent"
+      prop_classification_results_are_consistent,
+    testProperty "prop_classification_results_are_consistent2"
+      prop_classification_results_are_consistent2,
     testProperty "prop_classification_stabilises"
-      prop_classification_stabilises
+      prop_classification_stabilises,
+    testProperty "prop_models_not_deleted_unless_allowed"
+      prop_models_not_deleted_unless_allowed,
+    testProperty "prop_models_not_deleted_unless_allowed2"
+      prop_models_not_deleted_unless_allowed2    
   ]

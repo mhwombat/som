@@ -15,6 +15,7 @@ module Main where
 
 import Data.Datamining.PatternQC ( test )
 import Data.Datamining.Clustering.SOMQC ( test )
+import Data.Datamining.Clustering.SOSQC ( test )
 import Data.Datamining.Clustering.SSOMQC ( test )
 import Data.Datamining.Clustering.DSOMQC ( test )
 
@@ -25,6 +26,7 @@ tests =
   [ 
     Data.Datamining.PatternQC.test,
     Data.Datamining.Clustering.SSOMQC.test,
+    Data.Datamining.Clustering.SOSQC.test,
     Data.Datamining.Clustering.SOMQC.test,
     Data.Datamining.Clustering.DSOMQC.test
   ]

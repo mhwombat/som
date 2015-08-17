@@ -60,6 +60,9 @@ data SOS t x k p = SOS
     maxSize :: Int,
     -- | The threshold that triggers creation of a new model.
     diffThreshold :: x,
+    -- | Delete existing models to make room for new ones? The least
+    --   useful (least frequently matched) models will be deleted first.
+    allowDeletion :: Bool,
     -- | A function which compares two patterns and returns a
     --   /non-negative/ number representing how different the patterns
     --   are.
@@ -93,12 +96,12 @@ data SOS t x k p = SOS
 -- them more similar to input patterns.
 makeSOS
   :: Bounded k
-    => (t -> x) -> Int -> x -> (p -> p -> x) -> (p -> x -> p -> p)
-      -> SOS t x k p
-makeSOS lr n dt diff ms =
+    => (t -> x) -> Int -> x -> Bool -> (p -> p -> x)
+      -> (p -> x -> p -> p) -> SOS t x k p
+makeSOS lr n dt ad diff ms =
   if n <= 0
     then error "max size for SOS <= 0"
-    else SOS M.empty lr n dt diff ms minBound
+    else SOS M.empty lr n dt ad diff ms minBound
 
 -- | Returns true if the SOS has no models, false otherwise.
 isEmpty :: SOS t x k p -> Bool
@@ -207,7 +210,9 @@ classify
     => SOS t x k p -> p -> (k, x, [(k, x)], SOS t x k p)
 classify s p
   | isEmpty s                 = classify (addModel p s) p
-  | bmuDiff > diffThreshold s = classify (addModel p s) p
+  | bmuDiff > diffThreshold s
+      && (numModels s < maxSize s || allowDeletion s)
+                              = classify (addModel p s) p
   | otherwise                 = (bmu, bmuDiff, diffs, s')
   where (bmu, bmuDiff) = minimumBy (comparing snd) diffs
         diffs = M.toList . M.map (difference s p) . M.map fst

@@ -109,7 +109,7 @@ isEmpty = M.null . toMap
 
 -- | Returns the number of models the SOS currently contains.
 numModels :: SOS t x k p -> Int
-numModels = length . M.keys . toMap
+numModels = M.size . toMap
 
 -- | Returns a map from node ID to model.
 modelMap :: SOS t x k p -> M.Map k p

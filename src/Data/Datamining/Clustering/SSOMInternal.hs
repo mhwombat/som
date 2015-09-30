@@ -110,7 +110,7 @@ instance
     => Classifier (SSOM t) x k p where
   toList = M.toList . toMap
   -- TODO: If the # of models is fixed, make more efficient
-  numModels = length . M.keys . sMap
+  numModels = M.size . sMap
   models = M.elems . toMap
   differences s p = M.toList . M.map (difference s p) $ toMap s
   trainBatch s = incrementCounter . foldl' justTrain s

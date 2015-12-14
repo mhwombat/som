@@ -1,5 +1,5 @@
 Name:              som
-Version:           8.2.3
+Version:           9.0
 Stability:         experimental
 Synopsis:          Self-Organising Maps.
 Description:       A Kohonen Self-organising Map (SOM) maps input patterns 
@@ -49,10 +49,8 @@ library
                    Data.Datamining.Clustering.SOMInternal,
                    Data.Datamining.Clustering.DSOM,
                    Data.Datamining.Clustering.DSOMInternal,
-                   Data.Datamining.Clustering.SSOM,
-                   Data.Datamining.Clustering.SSOMInternal,
-                   Data.Datamining.Clustering.SOS,
-                   Data.Datamining.Clustering.SOSInternal,
+                   Data.Datamining.Clustering.SGM,
+                   Data.Datamining.Clustering.SGMInternal,
                    Data.Datamining.Clustering.Classifier,
                    Data.Datamining.Pattern
 
@@ -73,7 +71,6 @@ test-suite som-tests
   main-is:         Main.hs
   other-modules:   Data.Datamining.Clustering.SOMQC,
                    Data.Datamining.Clustering.DSOMQC,
-                   Data.Datamining.Clustering.SSOMQC,
-                   Data.Datamining.Clustering.SOSQC,
+                   Data.Datamining.Clustering.SGMQC,
                    Data.Datamining.PatternQC
 

@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Datamining.Clustering.SOMInternal
--- Copyright   :  (c) Amy de Buitléir 2012-2015
+-- Copyright   :  (c) Amy de Buitléir 2012-2018
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental
@@ -16,6 +16,8 @@
 
 module Data.Datamining.Clustering.SOMInternal where
 
+import Prelude hiding (lookup)
+
 import Control.DeepSeq (NFData)
 import qualified Data.Foldable as F (Foldable, foldr)
 import Data.List (foldl', minimumBy)
@@ -24,7 +26,6 @@ import qualified Math.Geometry.Grid as G (Grid(..))
 import qualified Math.Geometry.GridMap as GM (GridMap(..))
 import Data.Datamining.Clustering.Classifier(Classifier(..))
 import GHC.Generics (Generic)
-import Prelude hiding (lookup)
 
 -- | A typical learning function for classifiers.
 --   @'decayingGaussian' r0 rf w0 wf tf@ returns a bell curve-shaped

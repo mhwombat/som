@@ -1,76 +1,73 @@
-Name:              som
-Version:           9.0.1
-Stability:         experimental
-Synopsis:          Self-Organising Maps.
-Description:       A Kohonen Self-organising Map (SOM) maps input patterns 
-                   onto a regular grid (usually two-dimensional) where each
-                   node in the grid is a model of the input data, and does
-                   so using a method which ensures that any topological
-                   relationships within the input data are also represented
-                   in the grid. This implementation supports the use of 
-                   non-numeric patterns.
-                   .
-                   In layman's terms, a SOM can be useful when you you want
-                   to discover the underlying structure of some data.
-                   .
-                   The userguide is available at 
-                   <https://github.com/mhwombat/som/wiki>.
-Category:          Math
-License:           BSD3
-License-file:      LICENSE
-Copyright:         (c) Amy de Buitléir 2010-2015
-Homepage:          https://github.com/mhwombat/som
-Bug-reports:       https://github.com/mhwombat/som/issues
-Author:            Amy de Buitléir
-Maintainer:        amy@nualeargais.ie
-Build-Type:        Simple
-Cabal-Version:     >=1.8
+-- This file has been generated from package.yaml by hpack version 0.28.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 1330189cdf3ef7ee816d06173d1dce1e99b18deb50790491685a1afe06f6c712
+
+name:           som
+version:        10.0.0
+synopsis:       Self-Organising Maps
+description:    Please see the README on GitHub at <https://github.com/mhwombat/som#readme>
+category:       Math
+homepage:       https://github.com/mhwombat/som#readme
+bug-reports:    https://github.com/mhwombat/som/issues
+author:         Amy de Buitléir
+maintainer:     amy@nualeargais.ie
+copyright:      2018 Amy de Buitléir
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+extra-source-files:
+    ChangeLog.md
+    README.md
 
 source-repository head
-  type:     git
-  location: https://github.com/mhwombat/som.git
-
-source-repository this
-  type:     git
-  location: https://github.com/mhwombat/som.git
-  tag:      8.2.3
-
+  type: git
+  location: https://github.com/mhwombat/som
 
 library
-  hs-source-dirs:  src
-  build-depends:   assert ==0.0.*,
-                   base >=4.8 && <5,
-                   containers ==0.5.*,
-                   deepseq ==1.4.*,
-                   grid ==7.* && >=7.7,
-                   MonadRandom ==0.4.*
-  ghc-options:     -Wall
-  exposed-modules: Data.Datamining.Clustering.SOM,
-                   Data.Datamining.Clustering.SOMInternal,
-                   Data.Datamining.Clustering.DSOM,
-                   Data.Datamining.Clustering.DSOMInternal,
-                   Data.Datamining.Clustering.SGM,
-                   Data.Datamining.Clustering.SGMInternal,
-                   Data.Datamining.Clustering.Classifier,
-                   Data.Datamining.Pattern
+  exposed-modules:
+      Data.Datamining.Clustering.Classifier
+      Data.Datamining.Clustering.DSOM
+      Data.Datamining.Clustering.DSOMInternal
+      Data.Datamining.Clustering.SGM
+      Data.Datamining.Clustering.SGMInternal
+      Data.Datamining.Clustering.SOM
+      Data.Datamining.Clustering.SOMInternal
+      Data.Datamining.Pattern
+  other-modules:
+      Paths_som
+  hs-source-dirs:
+      src
+  ghc-options: -Wall
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , deepseq
+    , grid
+  default-language: Haskell2010
 
-test-suite som-tests
-  type:            exitcode-stdio-1.0
-  build-depends:   assert ==0.0.*,
-                   base >=4.8 && <5,
-                   test-framework-quickcheck2 == 0.3.*,
-                   QuickCheck ==2.8.*,
-                   test-framework ==0.8.*,
-                   som,
-                   containers ==0.5.*,
-                   grid ==7.* && >=7.7,
-                   MonadRandom ==0.4.*,
-                   random ==1.1.*
-  hs-source-dirs:  test
-  ghc-options:     -Wall
-  main-is:         Main.hs
-  other-modules:   Data.Datamining.Clustering.SOMQC,
-                   Data.Datamining.Clustering.DSOMQC,
-                   Data.Datamining.Clustering.SGMQC,
-                   Data.Datamining.PatternQC
-
+test-suite som-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Data.Datamining.Clustering.DSOMQC
+      Data.Datamining.Clustering.SGMQC
+      Data.Datamining.Clustering.SOMQC
+      Data.Datamining.PatternQC
+      Paths_som
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
+  build-depends:
+      QuickCheck
+    , base >=4.7 && <5
+    , containers
+    , deepseq
+    , grid
+    , random
+    , som
+    , test-framework
+    , test-framework-quickcheck2
+  default-language: Haskell2010

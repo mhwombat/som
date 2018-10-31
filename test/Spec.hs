@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  Main
--- Copyright   :  (c) Amy de Buitléir 2012-2015
+-- Copyright   :  (c) Amy de Buitléir 2012-2018
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental
@@ -10,9 +10,6 @@
 -- Tests
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE UnicodeSyntax #-}
-module Main where
-
 import Data.Datamining.PatternQC ( test )
 import Data.Datamining.Clustering.SOMQC ( test )
 import Data.Datamining.Clustering.SGMQC ( test )

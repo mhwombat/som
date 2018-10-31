@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Datamining.Clustering.SGM
--- Copyright   :  (c) Amy de Buitléir 2012-2015
+-- Copyright   :  (c) Amy de Buitléir 2012-2018
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental
@@ -27,11 +27,22 @@
 --
 -- References:
 --
--- * de Buitléir, Amy, Russell, Michael and Daly, Mark. (2012). Wains:
---   A pattern-seeking artificial life species. Artificial Life, 18 (4),
---   399-423. 
--- 
--- * Kohonen, T. (1982). Self-organized formation of topologically 
+-- * Amy de Buitléir, Mark Daly, and Michael Russell.
+--   The Self-generating Model: an Adaptation of the Self-organizing Map
+--   for Intelligent Agents and Data Mining.
+--   In: Artificial Life and Intelligent Agents: Second International
+--   Symposium, ALIA 2016, Birmingham, UK, June 14-15, 2016,
+--   Revised Selected Papers.
+--   Ed. by Peter R. Lewis et al. Springer International Publishing,
+--   2018, pp. 59–72.
+--   Available at http://amydebuitleir.eu/publications/.
+--
+-- * Amy de Buitléir, Michael Russell, and Mark Daly.
+--   Wains: A pattern-seeking artificial life species.
+--   Artificial Life, (18)4:399–423, 2012.
+--   Available at http://amydebuitleir.eu/publications/.
+--
+-- * Kohonen, T. (1982). Self-organized formation of topologically
 --   correct feature maps. Biological Cybernetics, 43 (1), 59–69.
 ------------------------------------------------------------------------
 
@@ -46,6 +57,7 @@ module Data.Datamining.Clustering.SGM
     numModels,
     modelMap,
     counterMap,
+    modelAt,
     -- models,
     -- counters,
     -- * Learning and classification

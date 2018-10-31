@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Datamining.Clustering.SGMQC
--- Copyright   :  (c) Amy de Buitléir 2012-2015
+-- Copyright   :  (c) Amy de Buitléir 2012-2018
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental
@@ -19,6 +19,7 @@ module Data.Datamining.Clustering.SGMQC
     test
   ) where
 
+import Control.DeepSeq (deepseq)
 import Data.Datamining.Pattern (adjustNum, absDifference)
 import Data.Datamining.Clustering.SGMInternal
 import Data.List ((\\), minimumBy)
@@ -94,13 +95,21 @@ instance Arbitrary TestSGM where
 
 prop_classify_chooses_best_fit :: TestSGM -> Double -> Property
 prop_classify_chooses_best_fit (TestSGM s _) x
-  = property $ bmu == fst (minimumBy (comparing snd) diffs)
-  where (bmu, _, diffs, _) = trainAndClassify s x
+  = property $ bmu == bmu2
+  where (bmu, _, report, _) = trainAndClassify s x
+        bmu2 = fst (minimumBy (comparing f) . M.toList $ report)
+        f (_, (_, d)) = d
 
 prop_classify_never_creates_model :: TestSGM -> Double -> Property
 prop_classify_never_creates_model (TestSGM s _) x
   = not (isEmpty s) ==> bmu `elem` (labels s)
   where (bmu, _, _) = classify s x
+
+prop_classify_never_causes_error_unless_som_empty
+  :: TestSGM -> Double -> Property
+prop_classify_never_causes_error_unless_som_empty (TestSGM s _) p
+  = not (isEmpty s) ==> property $ deepseq x True
+  where x = classify s p
 
 prop_trainNode_reduces_diff :: TestSGM -> Double -> Property
 prop_trainNode_reduces_diff (TestSGM s _) x = not (isEmpty s) ==>
@@ -171,14 +180,9 @@ prop_classification_is_consistent (TestSGM s _) x
 prop_classification_results_are_consistent
   :: TestSGM -> Double -> Property
 prop_classification_results_are_consistent (TestSGM s _) x
-  = property $ bmu == fst (minimumBy (comparing snd) diffs)
-  where (bmu, _, diffs, _) = trainAndClassify s x
-
-prop_classification_results_are_consistent2
-  :: TestSGM -> Double -> Property
-prop_classification_results_are_consistent2 (TestSGM s _) x
-  = property $ bmuDiff == snd (minimumBy (comparing snd) diffs)
-  where (_, bmuDiff, diffs, _) = trainAndClassify s x
+  = property $ bmuDiff == minimum diffs
+  where (_, bmuDiff, report, _) = trainAndClassify s x
+        diffs = map (\(_, (_, d)) -> d) . M.toList $ report
 
 prop_classification_stabilises :: TestSGM -> [Double] -> Property
 prop_classification_stabilises (TestSGM s _)  ps
@@ -215,6 +219,8 @@ test = testGroup "QuickCheck Data.Datamining.Clustering.SGM"
       prop_classify_chooses_best_fit,
     testProperty "prop_classify_never_creates_model"
       prop_classify_never_creates_model,
+    testProperty "prop_classify_never_causes_error_unless_som_empty"
+      prop_classify_never_causes_error_unless_som_empty,
     testProperty "prop_trainNode_reduces_diff"
       prop_trainNode_reduces_diff,
     testProperty "prop_diff_lt_threshold_after_training"
@@ -230,12 +236,10 @@ test = testGroup "QuickCheck Data.Datamining.Clustering.SGM"
       prop_classification_is_consistent,
     testProperty "prop_classification_results_are_consistent"
       prop_classification_results_are_consistent,
-    testProperty "prop_classification_results_are_consistent2"
-      prop_classification_results_are_consistent2,
     testProperty "prop_classification_stabilises"
       prop_classification_stabilises,
     testProperty "prop_models_not_deleted_unless_allowed"
       prop_models_not_deleted_unless_allowed,
     testProperty "prop_models_not_deleted_unless_allowed2"
-      prop_models_not_deleted_unless_allowed2    
+      prop_models_not_deleted_unless_allowed2
   ]

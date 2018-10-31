@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Datamining.Clustering.SGMInternal
--- Copyright   :  (c) Amy de Buitléir 2012-2015
+-- Copyright   :  (c) Amy de Buitléir 2012-2018
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental
@@ -120,6 +120,10 @@ modelMap = M.map fst . toMap
 counterMap :: SGM t x k p -> M.Map k t
 counterMap = M.map snd . toMap
 
+-- | Returns the model at a specified node.
+modelAt :: Ord k => SGM t x k p -> k -> p
+modelAt s k = (modelMap s) M.! k
+
 -- | Returns the current labels.
 labels :: SGM t x k p -> [k]
 labels = M.keys . toMap
@@ -200,31 +204,34 @@ addModel p s = addNode p s'
 --   It will not make any changes to the classifier.
 --   Returns the ID of the node with the best matching model,
 --   the difference between the best matching model and the pattern,
---   and the SGM labels paired  with the difference between the input
---   and the corresponding model.
+--   and the SGM labels paired with the model and the difference
+--   between the input and the corresponding model.
 --   The final paired list is sorted in decreasing order of similarity.
 classify
   :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
-    => SGM t x k p -> p -> (k, x, [(k, x)])
-classify s p = (bmu, bmuDiff, diffs)
-  where sFull = s { maxSize = 0, allowDeletion = False } -- no changes!
-        (bmu, bmuDiff, diffs, _) = classify' sFull p
-        
+    => SGM t x k p -> p -> (k, x, M.Map k (p, x))
+classify s p = (bmu, bmuDiff, report)
+  where sFull = s { maxSize = numModels s, allowDeletion = False }
+          -- don't allow any changes!
+        (bmu, bmuDiff, report, _) = classify' sFull p
+
 
 -- NOTE: This function may create a new model, but it does not modify
 -- existing models.
 classify'
   :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
-    => SGM t x k p -> p -> (k, x, [(k, x)], SGM t x k p)
+    => SGM t x k p -> p -> (k, x, M.Map k (p, x), SGM t x k p)
 classify' s p
   | isEmpty s                 = classify' (addModel p s) p
   | bmuDiff > diffThreshold s
       && (numModels s < maxSize s || allowDeletion s)
                               = classify' (addModel p s) p
-  | otherwise                 = (bmu, bmuDiff, diffs, s')
-  where diffs = sortBy matchOrder . M.toList . M.map (difference s p)
-                    . M.map fst . toMap $ s
-        (bmu, bmuDiff) = head diffs
+  | otherwise                 = (bmu, bmuDiff, report, s')
+  where report
+          = M.map (\p0 -> (p0, difference s p p0)) . modelMap $ s
+        (bmu, bmuDiff)
+          = head . sortBy matchOrder . map (\(k, (_, x)) -> (k, x))
+              . M.toList $ report
         s' = incrementCounter bmu s
 
 -- We want the model with the lowest difference from the input pattern.
@@ -242,9 +249,9 @@ matchOrder (a, b) (c, d) = compare (b, a) (d, c)
 --   and the updated SGM.
 trainAndClassify
   :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
-    => SGM t x k p -> p -> (k, x, [(k, x)], SGM t x k p)
-trainAndClassify s p = (bmu, bmuDiff, diffs, s3)
-  where (bmu, bmuDiff, diffs, s2) = classify' s p
+    => SGM t x k p -> p -> (k, x, M.Map k (p, x), SGM t x k p)
+trainAndClassify s p = (bmu, bmuDiff, report, s3)
+  where (bmu, bmuDiff, report, s2) = classify' s p
         s3 = trainNode s2 bmu p
 
 -- | @'train' s p@ identifies the model in @s@ that most closely
@@ -263,4 +270,4 @@ trainBatch
   :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
     => SGM t x k p -> [p] -> SGM t x k p
 trainBatch = foldl' train
-  
+

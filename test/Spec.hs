@@ -13,14 +13,16 @@
 import Data.Datamining.PatternQC ( test )
 import Data.Datamining.Clustering.SOMQC ( test )
 import Data.Datamining.Clustering.SGMQC ( test )
+import Data.Datamining.Clustering.SGM2QC ( test )
 import Data.Datamining.Clustering.DSOMQC ( test )
 
 import Test.Framework as TF ( defaultMain, Test )
 
 tests :: [TF.Test]
-tests = 
-  [ 
+tests =
+  [
     Data.Datamining.PatternQC.test,
+    Data.Datamining.Clustering.SGM2QC.test,
     Data.Datamining.Clustering.SGMQC.test,
     Data.Datamining.Clustering.SOMQC.test,
     Data.Datamining.Clustering.DSOMQC.test

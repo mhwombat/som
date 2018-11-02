@@ -1,10 +1,10 @@
 name:                som
-version:             10.0.1
+version:             10.1.0
 github:              "mhwombat/som"
 license:             BSD3
 author:              "Amy de Buitléir"
 maintainer:          "amy@nualeargais.ie"
-copyright:           "2018 Amy de Buitléir"
+copyright:           "2012-2018 Amy de Buitléir"
 
 extra-source-files:
 - README.md

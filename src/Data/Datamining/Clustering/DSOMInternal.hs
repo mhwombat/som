@@ -12,7 +12,8 @@
 --
 ------------------------------------------------------------------------
 {-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances,
-    MultiParamTypeClasses, DeriveAnyClass, DeriveGeneric #-}
+    MultiParamTypeClasses, DeriveAnyClass, DeriveGeneric,
+    UndecidableInstances #-}
 
 module Data.Datamining.Clustering.DSOMInternal where
 
@@ -46,7 +47,7 @@ data DSOM gm x k p = DSOM
     gridMap :: gm p,
     -- | A function which determines the how quickly the SOM learns.
     learningRate :: (x -> x -> x -> x),
-    -- | A function which compares two patterns and returns a 
+    -- | A function which compares two patterns and returns a
     --   /non-negative/ number representing how different the patterns
     --   are.
     --   A result of @0@ indicates that the patterns are identical.
@@ -92,6 +93,7 @@ instance
   alter f k = withGridMap (GM.alter f k)
   filterWithKey f = withGridMap (GM.filterWithKey f)
 
+-- | Internal method.
 withGridMap :: (gm p -> gm p) -> DSOM gm x k p -> DSOM gm x k p
 withGridMap f s = s { gridMap=gm' }
     where gm = gridMap s
@@ -101,10 +103,11 @@ withGridMap f s = s { gridMap=gm' }
 toGridMap :: GM.GridMap gm p => DSOM gm x k p -> gm p
 toGridMap = gridMap
 
+-- | Internal method.
 adjustNode
   :: (G.FiniteGrid (gm p), GM.GridMap gm p,
       k ~ G.Index (gm p), k ~ G.Index (GM.BaseGrid gm p),
-      Ord k, Num x, Fractional x) => 
+      Ord k, Num x, Fractional x) =>
      gm p -> (p -> x -> p -> p) -> (p -> p -> x) -> (x -> x -> x) -> p -> k -> k
        -> (p -> p)
 adjustNode gm fms fd fr target bmu k = fms target amount
@@ -113,6 +116,7 @@ adjustNode gm fms fd fr target bmu k = fms target amount
                  (G.maxPossibleDistance gm)
         amount = fr diff dist
 
+-- | Internal method.
 scaleDistance :: (Num a, Fractional a) => Int -> Int -> a
 scaleDistance d dMax
   | dMax == 0  = 0
@@ -125,7 +129,7 @@ scaleDistance d dMax
 trainNeighbourhood
   :: (G.FiniteGrid (gm p), GM.GridMap gm p,
       k ~ G.Index (gm p), k ~ G.Index (GM.BaseGrid gm p),
-      Ord k, Num x, Fractional x) => 
+      Ord k, Num x, Fractional x) =>
       DSOM gm x t p -> k -> p -> DSOM gm x k p
 trainNeighbourhood s bmu target = s { gridMap=gm' }
   where gm = gridMap s
@@ -135,11 +139,12 @@ trainNeighbourhood s bmu target = s { gridMap=gm' }
         fr = (learningRate s) bmuDiff
         bmuDiff = (difference s) (gm GM.! bmu) target
 
+-- | Internal method.
 justTrain
   :: (G.FiniteGrid (gm p), GM.GridMap gm p, GM.GridMap gm x,
       k ~ G.Index (gm p), k ~ G.Index (gm x),
       k ~ G.Index (GM.BaseGrid gm p), k ~ G.Index (GM.BaseGrid gm x),
-      Ord k, Ord x, Num x, Fractional x) => 
+      Ord k, Ord x, Num x, Fractional x) =>
      DSOM gm x t p -> p -> DSOM gm x k p
 justTrain s p = trainNeighbourhood s bmu p
   where ds = GM.toList . GM.map (difference s p) $ gridMap s
@@ -148,7 +153,7 @@ justTrain s p = trainNeighbourhood s bmu p
         f xs = fst $ minimumBy (comparing snd) xs
 
 instance
-  (GM.GridMap gm p, k ~ G.Index (GM.BaseGrid gm p), 
+  (GM.GridMap gm p, k ~ G.Index (GM.BaseGrid gm p),
     G.FiniteGrid (gm p), GM.GridMap gm x, k ~ G.Index (gm p),
     k ~ G.Index (gm x), k ~ G.Index (GM.BaseGrid gm x), Ord k, Ord x,
     Num x, Fractional x) =>
@@ -179,5 +184,5 @@ rougierLearningFunction
 rougierLearningFunction r p bmuDiff diff dist
   | bmuDiff == 0         = 0
   | otherwise           = r * abs diff * exp (-k*k)
-  where k = dist/(p*abs bmuDiff) 
+  where k = dist/(p*abs bmuDiff)
 

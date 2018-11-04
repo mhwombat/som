@@ -12,7 +12,8 @@
 --
 ------------------------------------------------------------------------
 {-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances,
-    MultiParamTypeClasses, DeriveAnyClass, DeriveGeneric #-}
+    MultiParamTypeClasses, DeriveAnyClass, DeriveGeneric,
+    UndecidableInstances #-}
 
 module Data.Datamining.Clustering.SGMInternal where
 
@@ -82,18 +83,18 @@ data SGM t x k p = SGM
     nextIndex :: k
   } deriving (Generic, NFData)
 
--- @'makeSGM' lr n dt diff ms@ creates a new SGM that does not (yet)
--- contain any models.
--- It will learn at the rate determined by the learning function @lr@,
--- and will be able to hold up to @n@ models.
--- It will create a new model based on a pattern presented to it when
--- (1) the SGM contains no models, or
--- (2) the difference between the pattern and the closest matching
--- model exceeds the threshold @dt@.
--- It will use the function @diff@ to measure the similarity between
--- an input pattern and a model.
--- It will use the function @ms@ to adjust models as needed to make
--- them more similar to input patterns.
+-- | @'makeSGM' lr n dt diff ms@ creates a new SGM that does not (yet)
+--   contain any models.
+--   It will learn at the rate determined by the learning function @lr@,
+--   and will be able to hold up to @n@ models.
+--   It will create a new model based on a pattern presented to it when
+--   (1) the SGM contains no models, or
+--   (2) the difference between the pattern and the closest matching
+--   model exceeds the threshold @dt@.
+--   It will use the function @diff@ to measure the similarity between
+--   an input pattern and a model.
+--   It will use the function @ms@ to adjust models as needed to make
+--   them more similar to input patterns.
 makeSGM
   :: Bounded k
     => (t -> x) -> Int -> x -> Bool -> (p -> p -> x)
@@ -161,6 +162,7 @@ deleteNode k s = s { toMap=gm' }
                 then M.delete k gm
                 else error "no such node"
 
+-- | Increment the match counter.
 incrementCounter :: (Num t, Ord k) => k -> SGM t x k p -> SGM t x k p
 incrementCounter k s = s { toMap=gm' }
   where gm = toMap s
@@ -181,16 +183,20 @@ trainNode s k target = s { toMap=gm' }
         r = (learningRate s) (time s)
         tweakModel (p, t) = (makeSimilar s target r p, t)
 
+-- | Returns the node that has been the BMU least often.
 leastUsefulNode :: Ord t => SGM t x k p -> k
 leastUsefulNode s = if isEmpty s
                       then error "SGM has no nodes"
                       else fst . minimumBy (comparing (snd . snd))
                              . M.toList . toMap $ s
 
+-- | Deletes the node that has been the BMU least often.
 deleteLeastUsefulNode :: (Ord t, Ord k) => SGM t x k p -> SGM t x k p
 deleteLeastUsefulNode s = deleteNode k s
   where k = leastUsefulNode s
 
+-- | Adds a new node to the SGM, deleting the least useful
+--   node/model if necessary to make room.
 addModel
   :: (Num t, Ord t, Enum k, Ord k)
     => p -> SGM t x k p -> SGM t x k p
@@ -216,6 +222,7 @@ classify s p = (bmu, bmuDiff, report)
         (bmu, bmuDiff, report, _) = classify' sFull p
 
 
+-- | Internal method.
 -- NOTE: This function may create a new model, but it does not modify
 -- existing models.
 classify'
@@ -234,9 +241,8 @@ classify' s p
               . M.toList $ report
         s' = incrementCounter bmu s
 
--- We want the model with the lowest difference from the input pattern.
--- If two models have the same difference, return the model that was
--- created earlier (has the lower label #).
+-- | Order models by ascending difference from the input pattern,
+--   then by creation order (label number).
 matchOrder :: (Ord a, Ord b) => (a, b) -> (a, b) -> Ordering
 matchOrder (a, b) (c, d) = compare (b, a) (d, c)
 

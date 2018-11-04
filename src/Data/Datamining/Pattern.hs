@@ -37,9 +37,11 @@ import Data.List (foldl')
 -- Using numbers as patterns.
 --
 
+-- | Returns the absolute difference between two numbers.
 absDifference :: Num a => a -> a -> a
 absDifference x y = abs (x - y)
 
+-- | Adjusts a number to make it more similar to the target.
 adjustNum :: (Num a, Ord a, Eq a) => a -> a -> a -> a
 adjustNum target r x
   | r < 0     = error "Negative learning rate"
@@ -54,6 +56,7 @@ adjustNum' r target x = x + r*(target - x)
 -- Using numeric vectors as patterns.
 --
 
+-- | Returns the sum of the squares of the elements of a vector.
 magnitudeSquared :: Num a => [a] -> a
 magnitudeSquared xs =  sum $ map (\x -> x*x) xs
 

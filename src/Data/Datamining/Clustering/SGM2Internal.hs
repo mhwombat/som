@@ -12,7 +12,8 @@
 --
 ------------------------------------------------------------------------
 {-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances,
-    MultiParamTypeClasses, DeriveAnyClass, DeriveGeneric #-}
+    MultiParamTypeClasses, DeriveAnyClass, DeriveGeneric,
+    UndecidableInstances #-}
 
 module Data.Datamining.Clustering.SGM2Internal where
 
@@ -77,16 +78,16 @@ data SGM t x k p = SGM
     nextIndex :: k
   } deriving (Generic, NFData)
 
--- @'makeSGM' lr n diff ms@ creates a new SGM that does not (yet)
--- contain any models.
--- It will learn at the rate determined by the learning function @lr@,
--- and will be able to hold up to @n@ models.
--- It will create a new model based on a pattern presented to it when
--- the SGM is not at capacity, or a less useful model can be replaced.
--- It will use the function @diff@ to measure the similarity between
--- an input pattern and a model.
--- It will use the function @ms@ to adjust models as needed to make
--- them more similar to input patterns.
+-- | @'makeSGM' lr n diff ms@ creates a new SGM that does not (yet)
+--   contain any models.
+--   It will learn at the rate determined by the learning function @lr@,
+--   and will be able to hold up to @n@ models.
+--   It will create a new model based on a pattern presented to it when
+--   the SGM is not at capacity, or a less useful model can be replaced.
+--   It will use the function @diff@ to measure the similarity between
+--   an input pattern and a model.
+--   It will use the function @ms@ to adjust models as needed to make
+--   them more similar to input patterns.
 makeSGM
   :: Bounded k
     => (t -> x) -> Int -> (p -> p -> x) -> (p -> x -> p -> p) -> SGM t x k p
@@ -148,6 +149,7 @@ addNode p s = if size s >= capacity s
         k = nextIndex s
         gm' = M.insert k (p, 0) gm
 
+-- | Increments the counter.
 incrementCounter :: (Num t, Ord k) => k -> SGM t x k p -> SGM t x k p
 incrementCounter k s = s { toMap=gm' }
   where gm = toMap s
@@ -209,6 +211,8 @@ mergeModels s k1 k2
         gm' = M.adjust f k $ M.delete k gm
         f (p, _) = (p, c1 + c2)
 
+-- | Set the model for a node.
+--   Useful when merging two models and replacing one.
 setModel :: (Num t, Ord k) => SGM t x k p -> k -> p -> SGM t x k p
 setModel s k p
   | M.member k gm = error "node already exists"
@@ -216,13 +220,14 @@ setModel s k p
   where gm = toMap s
         gm' = M.insert k (p, 0) gm
 
-addModel
-  :: (Num t, Ord t, Enum k, Ord k)
-    => p -> SGM t x k p -> SGM t x k p
-addModel p s
-  | size s >= capacity s = error "SGM at capacity"
-  | otherwise           = addNode p s
+-- addModel
+--   :: (Num t, Ord t, Enum k, Ord k)
+--     => p -> SGM t x k p -> SGM t x k p
+-- addModel p s
+--   | size s >= capacity s = error "SGM at capacity"
+--   | otherwise           = addNode p s
 
+-- | Add a new node, making room for it by merging two existing nodes.
 mergeAddModel
   :: (Num t, Ord t, Ord k) => SGM t x k p -> k -> k -> p -> SGM t x k p
 mergeAddModel s k1 k2 p = s3
@@ -250,9 +255,8 @@ classify s p
           = head . sortBy matchOrder . map (\(k, (_, x)) -> (k, x))
               . M.toList $ report
 
--- We want the model with the lowest difference from the input pattern.
--- If two models have the same difference, return the model that was
--- created earlier (has the lower label #).
+-- | Order models by ascending difference from the input pattern,
+--   then by creation order (label number).
 matchOrder :: (Ord a, Ord b) => (a, b) -> (a, b) -> Ordering
 matchOrder (a, b) (c, d) = compare (b, a) (d, c)
 
@@ -278,6 +282,7 @@ trainAndClassify s p
         s3 = mergeAddModel s k1 k2 p
         (bmu4, _, report4, s4) = trainAndClassify' s3 p
 
+-- | Internal method.
 -- NOTE: This function will adjust the model and update the match
 -- for the BMU.
 trainAndClassify'
@@ -289,11 +294,12 @@ trainAndClassify' s p = (bmu2, bmuDiff, report, s3)
         s3 = trainNode s2 bmu p
         (bmu2, _, report) = classify s3 p
 
+-- | Internal method.
 addModelTrainAndClassify
   :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
     => SGM t x k p -> p -> (k, x, M.Map k (p, x), SGM t x k p)
 addModelTrainAndClassify s p = (bmu, 1, report, s')
-  where (bmu, _, report, s') = trainAndClassify' (addModel p s) p
+  where (bmu, _, report, s') = trainAndClassify' (addNode p s) p
 
 -- | @'train' s p@ identifies the model in @s@ that most closely
 --   matches @p@, and updates it to be a somewhat better match.

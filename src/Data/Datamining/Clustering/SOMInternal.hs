@@ -12,7 +12,8 @@
 --
 ------------------------------------------------------------------------
 {-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances,
-    MultiParamTypeClasses, DeriveAnyClass, DeriveGeneric #-}
+    MultiParamTypeClasses, DeriveAnyClass, DeriveGeneric,
+    UndecidableInstances #-}
 
 module Data.Datamining.Clustering.SOMInternal where
 
@@ -93,7 +94,7 @@ data SOM t d gm x k p = SOM
     --   which the node's model should be updated to match the target).
     --   The learning rate should be between zero and one.
     learningRate :: t -> d -> x,
-    -- | A function which compares two patterns and returns a 
+    -- | A function which compares two patterns and returns a
     --   /non-negative/ number representing how different the patterns
     --   are.
     --   A result of @0@ indicates that the patterns are identical.
@@ -143,14 +144,14 @@ instance (F.Foldable gm, GM.GridMap gm p, G.Grid (GM.BaseGrid gm p))
   alter f k = withGridMap (GM.alter f k)
   filterWithKey f = withGridMap (GM.filterWithKey f)
 
+-- | Internal method.
 withGridMap :: (gm p -> gm p) -> SOM t d gm x k p -> SOM t d gm x k p
 withGridMap f s = s { gridMap=gm' }
     where gm = gridMap s
           gm' = f gm
 
-currentLearningFunction
-  :: (Num t)
-    => SOM t d gm x k p -> (d -> x)
+-- | Returns the learning function currently being used by the SOM.
+currentLearningFunction :: (Num t) => SOM t d gm x k p -> (d -> x)
 currentLearningFunction s
   = (learningRate s) (counter s)
 
@@ -159,6 +160,7 @@ currentLearningFunction s
 toGridMap :: GM.GridMap gm p => SOM t d gm x k p -> gm p
 toGridMap = gridMap
 
+-- | Internal method.
 adjustNode
   :: (G.Grid g, k ~ G.Index g, Num t) =>
      g -> (t -> x) -> (p -> x -> p -> p) -> p -> k -> k -> p -> p
@@ -180,9 +182,11 @@ trainNeighbourhood s bmu target = s { gridMap=gm' }
         f1 = currentLearningFunction s
         f2 = makeSimilar s
 
+-- | Increment the match counter.
 incrementCounter :: Num t => SOM t d gm x k p -> SOM t d gm x k p
 incrementCounter s = s { counter=counter s + 1}
 
+-- | Internal method.
 justTrain
   :: (Ord x, G.Grid (gm p), GM.GridMap gm x, GM.GridMap gm p,
       G.Index (GM.BaseGrid gm x) ~ G.Index (gm p),

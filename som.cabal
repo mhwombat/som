@@ -1,13 +1,11 @@
-cabal-version: 1.12
-
--- This file has been generated from package.yaml by hpack version 0.31.0.
+-- This file has been generated from package.yaml by hpack version 0.28.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: db939367eb84c580e5c3cd70a0572761e641ac65b3015327d552bc6e4c084387
+-- hash: a3aa4f1cafee447c60a82975496ad7f90007d0fab9af1ac9d17e3e4f32324370
 
 name:           som
-version:        10.1.0
+version:        10.1.2
 synopsis:       Self-Organising Maps
 description:    Please see the README on GitHub at <https://github.com/mhwombat/som#readme>
 category:       Math
@@ -19,9 +17,10 @@ copyright:      2012-2018 Amy de Buitléir
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
+cabal-version:  >= 1.10
 extra-source-files:
-    README.md
     ChangeLog.md
+    README.md
 
 source-repository head
   type: git

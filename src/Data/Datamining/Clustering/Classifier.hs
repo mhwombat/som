@@ -10,16 +10,18 @@
 -- Tools for identifying patterns in data.
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE TypeFamilies, FlexibleContexts, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 module Data.Datamining.Clustering.Classifier
   (
     Classifier(..)
   ) where
 
-import Data.List (minimumBy)
-import Data.Ord (comparing)
+import           Data.List (minimumBy)
+import           Data.Ord  (comparing)
 
--- | A machine which learns to classify input patterns. 
+-- | A machine which learns to classify input patterns.
 --   Minimal complete definition: @trainBatch@, @reportAndTrain@.
 class Classifier (c :: * -> * -> * -> *) v k p where
   -- | Returns a list of index\/model pairs.
@@ -31,12 +33,12 @@ class Classifier (c :: * -> * -> * -> *) v k p where
   -- | Returns the current models of the classifier.
   models :: c v k p -> [p]
 
-  -- | @'differences' c target@ returns the indices of all nodes in 
-  --   @c@, paired with the difference between @target@ and the 
+  -- | @'differences' c target@ returns the indices of all nodes in
+  --   @c@, paired with the difference between @target@ and the
   --   node's model.
   differences :: c v k p -> p -> [(k, v)]
 
-  -- | @classify c target@ returns the index of the node in @c@ 
+  -- | @classify c target@ returns the index of the node in @c@
   --   whose model best matches the @target@.
   classify :: Ord v => c v k p -> p -> k
   classify c p = f $ differences c p
@@ -57,7 +59,7 @@ class Classifier (c :: * -> * -> * -> *) v k p where
   --   index of the node in @c@ whose model best matches the input
   --   @target@, and a modified copy of the classifier @c@ that has
   --   partially learned the @target@. Invoking @classifyAndTrain c p@
-  --   may be faster than invoking @(p `classify` c, train c p)@, but 
+  --   may be faster than invoking @(p `classify` c, train c p)@, but
   --   they
   --   should give identical results.
   classifyAndTrain :: c v k p -> p -> (k, c v k p)

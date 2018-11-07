@@ -14,9 +14,9 @@
 -- References:
 --
 -- * Rougier, N. & Boniface, Y. (2011). Dynamic self-organising map.
---   Neurocomputing, 74 (11), 1840-1847. 
+--   Neurocomputing, 74 (11), 1840-1847.
 --
--- * Kohonen, T. (1982). Self-organized formation of topologically 
+-- * Kohonen, T. (1982). Self-organized formation of topologically
 --   correct feature maps. Biological Cybernetics, 43 (1), 59–69.
 ------------------------------------------------------------------------
 
@@ -32,4 +32,4 @@ module Data.Datamining.Clustering.DSOM
     trainNeighbourhood
   ) where
 
-import Data.Datamining.Clustering.DSOMInternal
+import           Data.Datamining.Clustering.DSOMInternal

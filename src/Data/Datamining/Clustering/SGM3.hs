@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------
 -- |
--- Module      :  Data.Datamining.Clustering.SGM
+-- Module      :  Data.Datamining.Clustering.SGM3
 -- Copyright   :  (c) Amy de Buitléir 2012-2018
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
@@ -46,7 +46,7 @@
 --   correct feature maps. Biological Cybernetics, 43 (1), 59–69.
 ------------------------------------------------------------------------
 
-module Data.Datamining.Clustering.SGM
+module Data.Datamining.Clustering.SGM3
   (
     -- * Construction
     SGM(..),
@@ -54,12 +54,10 @@ module Data.Datamining.Clustering.SGM
     -- * Deconstruction
     time,
     isEmpty,
-    numModels,
+    size,
     modelMap,
     counterMap,
     modelAt,
-    -- models,
-    -- counters,
     -- * Learning and classification
     exponential,
     classify,
@@ -68,5 +66,5 @@ module Data.Datamining.Clustering.SGM
     trainBatch
   ) where
 
-import           Data.Datamining.Clustering.SGMInternal
+import           Data.Datamining.Clustering.SGM3Internal
 

@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------
 -- |
--- Module      :  Data.Datamining.Clustering.SGM
+-- Module      :  Data.Datamining.Clustering.SGM2
 -- Copyright   :  (c) Amy de Buitléir 2012-2018
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
@@ -66,5 +66,5 @@ module Data.Datamining.Clustering.SGM2
     trainBatch
   ) where
 
-import Data.Datamining.Clustering.SGM2Internal
+import           Data.Datamining.Clustering.SGM2Internal
 

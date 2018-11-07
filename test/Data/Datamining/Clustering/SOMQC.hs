@@ -10,8 +10,10 @@
 -- Tests
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleInstances,
-    FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults -fno-warn-orphans #-}
 
 module Data.Datamining.Clustering.SOMQC
@@ -19,23 +21,32 @@ module Data.Datamining.Clustering.SOMQC
     test
   ) where
 
-import Data.Datamining.Pattern (euclideanDistanceSquared,
-  magnitudeSquared, adjustNum, absDifference)
-import Data.Datamining.Clustering.Classifier(classify,
-  classifyAndTrain, reportAndTrain, differences, diffAndTrain, models,
-  numModels, train, trainBatch)
-import Data.Datamining.Clustering.SOMInternal
+import           Data.Datamining.Clustering.Classifier  (classify,
+                                                         classifyAndTrain,
+                                                         diffAndTrain,
+                                                         differences, models,
+                                                         numModels,
+                                                         reportAndTrain, train,
+                                                         trainBatch)
+import           Data.Datamining.Clustering.SOMInternal
+import           Data.Datamining.Pattern                (absDifference,
+                                                         adjustNum,
+                                                         euclideanDistanceSquared,
+                                                         magnitudeSquared)
 
-import Data.List (sort)
-import Math.Geometry.Grid (size)
-import Math.Geometry.Grid.Hexagonal (HexHexGrid, hexHexGrid)
-import Math.Geometry.GridMap ((!), elems)
-import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
-import System.Random (Random)
-import Test.Framework as TF (Test, testGroup)
-import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose,
-  Property, property, sized, suchThat, vectorOf)
+import           Data.List                              (sort)
+import           Math.Geometry.Grid                     (size)
+import           Math.Geometry.Grid.Hexagonal           (HexHexGrid, hexHexGrid)
+import           Math.Geometry.GridMap                  (elems, (!))
+import           Math.Geometry.GridMap.Lazy             (LGridMap, lazyGridMap)
+import           System.Random                          (Random)
+import           Test.Framework                         as TF (Test, testGroup)
+import           Test.Framework.Providers.QuickCheck2   (testProperty)
+import           Test.QuickCheck                        (Arbitrary, Gen,
+                                                         Property, arbitrary,
+                                                         choose, property,
+                                                         sized, suchThat,
+                                                         vectorOf, (==>))
 
 positive :: (Num a, Ord a, Arbitrary a) => Gen a
 positive = arbitrary `suchThat` (> 0)
@@ -108,8 +119,8 @@ data SOMTestData
 instance Show SOMTestData where
   show s = "buildSOMTestData " ++ show (size . gridMap . som1 $ s)
     ++ " " ++ show (elems . gridMap . som1 $ s)
-    ++ " (" ++ show (params1 s) 
-    ++ ") " ++ show (trainingSet1 s) 
+    ++ " (" ++ show (params1 s)
+    ++ ") " ++ show (trainingSet1 s)
 
 buildSOMTestData
   :: Int -> [Double] -> DecayingGaussianParams Double
@@ -215,16 +226,16 @@ prop_classification_is_consistent _ = error "Should not happen"
 data SpecialSOMTestData
   = SpecialSOMTestData
     {
-      som2 :: SOM Int Int (LGridMap HexHexGrid) Double (Int, Int) Double,
-      params2 :: Double,
+      som2         :: SOM Int Int (LGridMap HexHexGrid) Double (Int, Int) Double,
+      params2      :: Double,
       trainingSet2 :: [Double]
     }
 
 instance Show SpecialSOMTestData where
   show s = "buildSpecialSOMTestData " ++ show (size . gridMap . som2 $ s)
     ++ " " ++ show (elems . gridMap . som2 $ s)
-    ++ " " ++ show (params2 s) 
-    ++ " " ++ show (trainingSet2 s) 
+    ++ " " ++ show (params2 s)
+    ++ " " ++ show (trainingSet2 s)
 
 buildSpecialSOMTestData
   :: Int -> [Double] -> Double -> [Double] -> SpecialSOMTestData
@@ -270,8 +281,8 @@ data IncompleteSOMTestData
 instance Show IncompleteSOMTestData where
   show s = "buildIncompleteSOMTestData " ++ show (size . gridMap . som3 $ s)
     ++ " " ++ show (elems . gridMap . som3 $ s)
-    ++ " " ++ show (params3 s) 
-    ++ " " ++ show (trainingSet3 s) 
+    ++ " " ++ show (params3 s)
+    ++ " " ++ show (trainingSet3 s)
 
 buildIncompleteSOMTestData
   :: Int -> [Double] -> DecayingGaussianParams Double

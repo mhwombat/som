@@ -10,7 +10,9 @@
 -- Tools for identifying patterns in data.
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE TypeFamilies, FlexibleContexts, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 module Data.Datamining.Pattern
   (
     -- * Numbers as patterns
@@ -31,7 +33,7 @@ module Data.Datamining.Pattern
     scaleAll
   ) where
 
-import Data.List (foldl')
+import           Data.List (foldl')
 
 --
 -- Using numbers as patterns.
@@ -97,8 +99,8 @@ adjustVectorPreserveLength ts r xs
   | otherwise = avpl ts r xs
 
 avpl :: (Num a, Ord a, Eq a) => [a] -> a -> [a] -> [a]
-avpl _ _ [] = []
-avpl [] _ x = x
+avpl _ _ []          = []
+avpl [] _ x          = x
 avpl (t:ts) r (x:xs) = (adjustNum' r t x) : (avpl ts r xs)
 
 -- | A vector that has been normalised, i.e., the magnitude of the

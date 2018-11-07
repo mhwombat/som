@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------
 -- |
--- Module      :  Data.Datamining.Clustering.SGMInternal
+-- Module      :  Data.Datamining.Clustering.SGM2Internal
 -- Copyright   :  (c) Amy de Buitléir 2012-2018
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
@@ -11,19 +11,23 @@
 -- use @SGM@ instead. This module is subject to change without notice.
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances,
-    MultiParamTypeClasses, DeriveAnyClass, DeriveGeneric,
-    UndecidableInstances #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 
 module Data.Datamining.Clustering.SGM2Internal where
 
-import Prelude hiding (lookup)
+import           Prelude         hiding (lookup)
 
-import Control.DeepSeq (NFData)
-import Data.List ((\\), minimumBy, sortBy, foldl')
-import Data.Ord (comparing)
+import           Control.DeepSeq (NFData)
+import           Data.List       (foldl', minimumBy, sortBy, (\\))
 import qualified Data.Map.Strict as M
-import GHC.Generics (Generic)
+import           Data.Ord        (comparing)
+import           GHC.Generics    (Generic)
 
 -- | A typical learning function for classifiers.
 --   @'exponential' r0 d t@ returns the learning rate at time @t@.
@@ -47,7 +51,7 @@ exponential r0 d t = r0 * exp (-d*t')
 data SGM t x k p = SGM
   {
     -- | Maps patterns and match counts to nodes.
-    toMap :: M.Map k (p, t),
+    toMap        :: M.Map k (p, t),
     -- | A function which determines the learning rate for a node.
     --   The input parameter indicates how many patterns (or pattern
     --   batches) have previously been presented to the classifier.
@@ -58,12 +62,12 @@ data SGM t x k p = SGM
     --   The learning rate should be between zero and one.
     learningRate :: t -> x,
     -- | The maximum number of models this SGM can hold.
-    capacity :: Int,
+    capacity     :: Int,
     -- | A function which compares two patterns and returns a
     --   /non-negative/ number representing how different the patterns
     --   are.
     --   A result of @0@ indicates that the patterns are identical.
-    difference :: p -> p -> x,
+    difference   :: p -> p -> x,
     -- | A function which updates models.
     --   For example, if this function is @f@, then
     --   @f target amount pattern@ returns a modified copy of @pattern@
@@ -73,9 +77,9 @@ data SGM t x k p = SGM
     --   Larger values for @amount@ permit greater adjustments.
     --   If @amount@=1, the result should be identical to the @target@.
     --   If @amount@=0, the result should be the unmodified @pattern@.
-    makeSimilar :: p -> x -> p -> p,
+    makeSimilar  :: p -> x -> p -> p,
     -- | Index for the next node to add to the SGM.
-    nextIndex :: k
+    nextIndex    :: k
   } deriving (Generic, NFData)
 
 -- | @'makeSGM' lr n diff ms@ creates a new SGM that does not (yet)

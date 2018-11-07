@@ -1,6 +1,8 @@
 # Changelog for som
 
+10.1.3 Added SGM3.
 10.1.2 Fixed a warning.
+       Added SGM2.
 10.1.1 Fixed a warning.
        Added more documentation.
 10.0.1 Upgraded to Stackage lts-12.16.

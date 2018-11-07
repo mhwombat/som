@@ -18,7 +18,7 @@
 -- the underlying structure of some data. A tutorial is available at
 -- <https://github.com/mhwombat/som/wiki>.
 --
--- NOTES: 
+-- NOTES:
 --
 -- * Version 5.0 fixed a bug in the @`decayingGaussian`@ function. If
 --   you use @`defaultSOM`@ (which uses this function), your SOM
@@ -32,7 +32,7 @@
 --
 -- References:
 --
--- * Kohonen, T. (1982). Self-organized formation of topologically 
+-- * Kohonen, T. (1982). Self-organized formation of topologically
 --   correct feature maps. Biological Cybernetics, 43 (1), 59–69.
 ------------------------------------------------------------------------
 
@@ -50,5 +50,5 @@ module Data.Datamining.Clustering.SOM
     trainNeighbourhood
   ) where
 
-import Data.Datamining.Clustering.SOMInternal
+import           Data.Datamining.Clustering.SOMInternal
 

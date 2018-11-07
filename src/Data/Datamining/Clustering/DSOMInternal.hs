@@ -11,21 +11,26 @@
 -- use @DSOM@ instead. This module is subject to change without notice.
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE TypeFamilies, FlexibleContexts, FlexibleInstances,
-    MultiParamTypeClasses, DeriveAnyClass, DeriveGeneric,
-    UndecidableInstances #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
+{-# LANGUAGE UndecidableInstances  #-}
 
 module Data.Datamining.Clustering.DSOMInternal where
 
-import Control.DeepSeq (NFData)
-import qualified Data.Foldable as F (Foldable, foldr)
-import Data.List (foldl', minimumBy)
-import Data.Ord (comparing)
-import GHC.Generics (Generic)
-import qualified Math.Geometry.Grid as G (Grid(..), FiniteGrid(..))
-import qualified Math.Geometry.GridMap as GM (GridMap(..))
-import Data.Datamining.Clustering.Classifier(Classifier(..))
-import Prelude hiding (lookup)
+import           Control.DeepSeq                       (NFData)
+import           Data.Datamining.Clustering.Classifier (Classifier (..))
+import qualified Data.Foldable                         as F (Foldable, foldr)
+import           Data.List                             (foldl', minimumBy)
+import           Data.Ord                              (comparing)
+import           GHC.Generics                          (Generic)
+import qualified Math.Geometry.Grid                    as G (FiniteGrid (..),
+                                                             Grid (..))
+import qualified Math.Geometry.GridMap                 as GM (GridMap (..))
+import           Prelude                               hiding (lookup)
 
 -- | A Self-Organising Map (DSOM).
 --
@@ -44,14 +49,14 @@ data DSOM gm x k p = DSOM
   {
     -- | Maps patterns to tiles in a regular grid.
     --   In the context of a SOM, the tiles are called "nodes"
-    gridMap :: gm p,
+    gridMap      :: gm p,
     -- | A function which determines the how quickly the SOM learns.
     learningRate :: (x -> x -> x -> x),
     -- | A function which compares two patterns and returns a
     --   /non-negative/ number representing how different the patterns
     --   are.
     --   A result of @0@ indicates that the patterns are identical.
-    difference :: p -> p -> x,
+    difference   :: p -> p -> x,
     -- | A function which updates models.
     --   If this function is @f@, then @f target amount pattern@ returns
     --   a modified copy of @pattern@ that is more similar to @target@
@@ -61,7 +66,7 @@ data DSOM gm x k p = DSOM
     --   Larger values for @amount@ permit greater adjustments.
     --   If @amount@=1, the result should be identical to the @target@.
     --   If @amount@=0, the result should be the unmodified @pattern@.
-    makeSimilar :: p -> x -> p -> p
+    makeSimilar  :: p -> x -> p -> p
   } deriving (Generic, NFData)
 
 instance (F.Foldable gm) => F.Foldable (DSOM gm x k) where

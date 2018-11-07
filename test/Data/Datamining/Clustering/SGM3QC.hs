@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------
 -- |
--- Module      :  Data.Datamining.Clustering.SGM2QC
+-- Module      :  Data.Datamining.Clustering.SGM3QC
 -- Copyright   :  (c) Amy de Buitléir 2012-2018
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
@@ -16,29 +16,44 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults -fno-warn-orphans #-}
 
-module Data.Datamining.Clustering.SGM2QC
+module Data.Datamining.Clustering.SGM3QC
   (
     test
   ) where
 
-import           Control.DeepSeq                         (deepseq)
+import           Control.DeepSeq
+    (deepseq)
 import           Data.Datamining.Clustering.SGM2Internal
-import           Data.Datamining.Pattern                 (absDifference,
-                                                          adjustNum)
-import           Data.List                               (minimumBy)
+import           Data.Datamining.Pattern
+    (absDifference, adjustNum)
+import           Data.List
+    (minimumBy)
 import qualified Data.Map.Strict                         as M
-import           Data.Ord                                (comparing)
-import           Data.Word                               (Word16)
-import           System.Random                           (Random)
-import           Test.Framework                          as TF (Test, testGroup)
-import           Test.Framework.Providers.QuickCheck2    (testProperty)
-import           Test.QuickCheck                         (Arbitrary, Gen,
-                                                          Positive, Property,
-                                                          arbitrary, choose,
-                                                          getPositive, property,
-                                                          shrink, sized,
-                                                          suchThat, vectorOf,
-                                                          (==>))
+import           Data.Ord
+    (comparing)
+import           Data.Word
+    (Word16)
+import           System.Random
+    (Random)
+import           Test.Framework                          as TF
+    (Test, testGroup)
+import           Test.Framework.Providers.QuickCheck2
+    (testProperty)
+import           Test.QuickCheck
+    ( Arbitrary
+    , Gen
+    , Positive
+    , Property
+    , arbitrary
+    , choose
+    , getPositive
+    , property
+    , shrink
+    , sized
+    , suchThat
+    , vectorOf
+    , (==>)
+    )
 
 newtype UnitInterval a = UnitInterval {getUnitInterval :: a}
  deriving ( Eq, Ord, Show, Read)

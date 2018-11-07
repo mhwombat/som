@@ -1,6 +1,6 @@
 ------------------------------------------------------------------------
 -- |
--- Module      :  Data.Datamining.Clustering.SGMInternal
+-- Module      :  Data.Datamining.Clustering.SGM3Internal
 -- Copyright   :  (c) Amy de Buitléir 2012-2018
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
@@ -19,15 +19,20 @@
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
-module Data.Datamining.Clustering.SGMInternal where
+module Data.Datamining.Clustering.SGM3Internal where
 
-import           Prelude         hiding (lookup)
+import           Prelude         hiding
+    (lookup)
 
-import           Control.DeepSeq (NFData)
-import           Data.List       (foldl', minimumBy, sortBy)
+import           Control.DeepSeq
+    (NFData)
+import           Data.List
+    (foldl', minimumBy, sortBy, (\\))
 import qualified Data.Map.Strict as M
-import           Data.Ord        (comparing)
-import           GHC.Generics    (Generic)
+import           Data.Ord
+    (comparing)
+import           GHC.Generics
+    (Generic)
 
 -- | A typical learning function for classifiers.
 --   @'exponential' r0 d t@ returns the learning rate at time @t@.
@@ -51,7 +56,7 @@ exponential r0 d t = r0 * exp (-d*t')
 data SGM t x k p = SGM
   {
     -- | Maps patterns and match counts to nodes.
-    toMap         :: M.Map k (p, t),
+    toMap        :: M.Map k (p, t),
     -- | A function which determines the learning rate for a node.
     --   The input parameter indicates how many patterns (or pattern
     --   batches) have previously been presented to the classifier.
@@ -60,19 +65,14 @@ data SGM t x k p = SGM
     --   The output is the learning rate for that node (the amount by
     --   which the node's model should be updated to match the target).
     --   The learning rate should be between zero and one.
-    learningRate  :: t -> x,
+    learningRate :: t -> x,
     -- | The maximum number of models this SGM can hold.
-    maxSize       :: Int,
-    -- | The threshold that triggers creation of a new model.
-    diffThreshold :: x,
-    -- | Delete existing models to make room for new ones? The least
-    --   useful (least frequently matched) models will be deleted first.
-    allowDeletion :: Bool,
+    capacity     :: Int,
     -- | A function which compares two patterns and returns a
     --   /non-negative/ number representing how different the patterns
     --   are.
     --   A result of @0@ indicates that the patterns are identical.
-    difference    :: p -> p -> x,
+    difference   :: p -> p -> x,
     -- | A function which updates models.
     --   For example, if this function is @f@, then
     --   @f target amount pattern@ returns a modified copy of @pattern@
@@ -82,39 +82,36 @@ data SGM t x k p = SGM
     --   Larger values for @amount@ permit greater adjustments.
     --   If @amount@=1, the result should be identical to the @target@.
     --   If @amount@=0, the result should be the unmodified @pattern@.
-    makeSimilar   :: p -> x -> p -> p,
+    makeSimilar  :: p -> x -> p -> p,
     -- | Index for the next node to add to the SGM.
-    nextIndex     :: k
+    nextIndex    :: k
   } deriving (Generic, NFData)
 
--- | @'makeSGM' lr n dt diff ms@ creates a new SGM that does not (yet)
+-- | @'makeSGM' lr n diff ms@ creates a new SGM that does not (yet)
 --   contain any models.
 --   It will learn at the rate determined by the learning function @lr@,
 --   and will be able to hold up to @n@ models.
 --   It will create a new model based on a pattern presented to it when
---   (1) the SGM contains no models, or
---   (2) the difference between the pattern and the closest matching
---   model exceeds the threshold @dt@.
+--   the SGM is not at capacity, or a less useful model can be replaced.
 --   It will use the function @diff@ to measure the similarity between
 --   an input pattern and a model.
 --   It will use the function @ms@ to adjust models as needed to make
 --   them more similar to input patterns.
 makeSGM
   :: Bounded k
-    => (t -> x) -> Int -> x -> Bool -> (p -> p -> x)
-      -> (p -> x -> p -> p) -> SGM t x k p
-makeSGM lr n dt ad diff ms =
+    => (t -> x) -> Int -> (p -> p -> x) -> (p -> x -> p -> p) -> SGM t x k p
+makeSGM lr n diff ms =
   if n <= 0
     then error "max size for SGM <= 0"
-    else SGM M.empty lr n dt ad diff ms minBound
+    else SGM M.empty lr n diff ms minBound
 
 -- | Returns true if the SGM has no models, false otherwise.
 isEmpty :: SGM t x k p -> Bool
 isEmpty = M.null . toMap
 
 -- | Returns the number of models the SGM currently contains.
-numModels :: SGM t x k p -> Int
-numModels = M.size . toMap
+size :: SGM t x k p -> Int
+size = M.size . toMap
 
 -- | Returns a map from node ID to model.
 modelMap :: SGM t x k p -> M.Map k p
@@ -129,18 +126,22 @@ counterMap = M.map snd . toMap
 modelAt :: Ord k => SGM t x k p -> k -> p
 modelAt s k = (modelMap s) M.! k
 
+-- | Returns the match counter for a specified node.
+counterAt :: Ord k => SGM t x k p -> k -> t
+counterAt s k = (counterMap s) M.! k
+
 -- | Returns the current labels.
 labels :: SGM t x k p -> [k]
 labels = M.keys . toMap
 
--- | Returns the current models.
-models :: SGM t x k p -> [p]
-models = map fst . M.elems . toMap
+-- -- | Returns the current models.
+-- models :: SGM t x k p -> [p]
+-- models = map fst . M.elems . toMap
 
--- | Returns the current counters (number of times the
---   node's model has been the closest match to an input pattern).
-counters :: SGM t x k p -> [t]
-counters = map snd . M.elems . toMap
+-- -- | Returns the current counters (number of times the
+-- --   node's model has been the closest match to an input pattern).
+-- counters :: SGM t x k p -> [t]
+-- counters = map snd . M.elems . toMap
 
 -- | The current "time" (number of times the SGM has been trained).
 time :: Num t => SGM t x k p -> t
@@ -150,21 +151,12 @@ time = sum . map snd . M.elems . toMap
 addNode
   :: (Num t, Enum k, Ord k)
     => p -> SGM t x k p -> SGM t x k p
-addNode p s = if numModels s >= maxSize s
+addNode p s = if size s >= capacity s
                 then error "SGM is full"
                 else s { toMap=gm', nextIndex=succ k }
   where gm = toMap s
         k = nextIndex s
         gm' = M.insert k (p, 0) gm
-
--- | Removes a node from the SGM.
---   Deleted nodes are never re-used.
-deleteNode :: Ord k => k -> SGM t x k p -> SGM t x k p
-deleteNode k s = s { toMap=gm' }
-  where gm = toMap s
-        gm' = if M.member k gm
-                then M.delete k gm
-                else error "no such node"
 
 -- | Increments the match counter.
 incrementCounter :: (Num t, Ord k) => k -> SGM t x k p -> SGM t x k p
@@ -187,31 +179,85 @@ trainNode s k target = s { toMap=gm' }
         r = (learningRate s) (time s)
         tweakModel (p, t) = (makeSimilar s target r p, t)
 
--- | Returns the node that has been the BMU least often.
-leastUsefulNode :: Ord t => SGM t x k p -> k
-leastUsefulNode s = if isEmpty s
-                      then error "SGM has no nodes"
-                      else fst . minimumBy (comparing (snd . snd))
-                             . M.toList . toMap $ s
+-- | Calculates the difference between all pairs of non-identical
+--   labels in the SGM.
+modelDiffs :: (Eq k, Ord k) => SGM t x k p -> [((k, k), x)]
+modelDiffs s = map f $ labelPairs s
+  where f (k, k') = ( (k, k'),
+                      difference s (s `modelAt` k) (s `modelAt` k') )
 
--- | Deletes the node that has been the BMU least often.
-deleteLeastUsefulNode :: (Ord t, Ord k) => SGM t x k p -> SGM t x k p
-deleteLeastUsefulNode s = deleteNode k s
-  where k = leastUsefulNode s
+-- | Generates all pairs of non-identical labels in the SGM.
+labelPairs :: Eq k => SGM t x k p -> [(k, k)]
+labelPairs s = concatMap (labelPairs' s) $ labels s
 
--- | Adds a new node to the SGM, deleting the least useful
---   node/model if necessary to make room.
-addModel
-  :: (Num t, Ord t, Enum k, Ord k)
-    => p -> SGM t x k p -> SGM t x k p
-addModel p s = addNode p s'
-  where s' = if numModels s >= maxSize s
-                then deleteLeastUsefulNode s
-                else s
+-- | Pairs a node label with all labels except itself.
+labelPairs' :: Eq k => SGM t x k p -> k -> [(k, k)]
+labelPairs' s k = map (\k' -> (k, k')) $ labels s \\ [k]
+
+-- | Returns the labels of the two most similar models, and the
+--   difference between them.
+twoMostSimilar :: (Ord x, Eq k, Ord k) => SGM t x k p -> (k, k, x)
+twoMostSimilar s
+  | size s < 2 = error "there aren't two models to merge"
+  | otherwise = (k, k', d)
+  where ((k, k'), d) = minimumBy (comparing snd) $ modelDiffs s
+
+-- | Returns the labels of the two most similar models, and the
+--   difference between them.
+meanModelDiff
+  :: (Fractional x, Num x, Ord x, Eq k, Ord k)
+  => SGM t x k p -> x
+meanModelDiff s
+  | size s == 0 = 0
+  | otherwise  = mean . map snd $ modelDiffs s
+
+-- | Calculate the mean of a set of values.
+-- mean :: (Eq a, Fractional a, Foldable t) => t a -> a
+mean :: (Fractional a, Eq a) => [a] -> a
+mean xs
+  | count == 0 = error "no data"
+  | otherwise = total / count
+  where (total, count) = foldr f (0, 0) xs
+        f x (y, n) = (y+x, n+1)
+
+-- | Deletes the least used (least matched) model in a pair,
+--   and returns its label (now available) and the updated SGM.
+--   TODO: Modify the other model to make it slightly more similar to
+--   the one that was deleted?
+mergeModels :: (Num t, Ord t, Ord k) => SGM t x k p -> k -> k -> (k, SGM t x k p)
+mergeModels s k1 k2
+  | not (M.member k1 gm) = error "no such node 1"
+  | not (M.member k2 gm) = error "no such node 2"
+  | otherwise          = (k, s { toMap = gm' })
+  where c1 = s `counterAt` k1
+        c2 = s `counterAt` k2
+        k = if c1 >= c2
+              then k1
+              else k2
+        gm = toMap s
+        gm' = M.adjust f k $ M.delete k gm
+        f (p, _) = (p, c1 + c2)
+
+-- | Set the model for a node.
+--   Useful when merging two models and replacing one.
+setModel :: (Num t, Ord k) => SGM t x k p -> k -> p -> SGM t x k p
+setModel s k p
+  | M.member k gm = error "node already exists"
+  | otherwise     = s { toMap = gm' }
+  where gm = toMap s
+        gm' = M.insert k (p, 0) gm
+
+-- | Adds a new node, making room for it by merging two existing nodes.
+mergeAddModel
+  :: (Num t, Ord t, Ord k) => SGM t x k p -> k -> k -> p -> SGM t x k p
+mergeAddModel s k1 k2 p = s3
+  where (k3, s2) = mergeModels s k1 k2
+        s3 = setModel s2 k3 p
 
 -- | @'classify' s p@ identifies the model @s@ that most closely
 --   matches the pattern @p@.
 --   It will not make any changes to the classifier.
+--   (I.e., it will not change the models or match counts.)
 --   Returns the ID of the node with the best matching model,
 --   the difference between the best matching model and the pattern,
 --   and the SGM labels paired with the model and the difference
@@ -220,30 +266,14 @@ addModel p s = addNode p s'
 classify
   :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
     => SGM t x k p -> p -> (k, x, M.Map k (p, x))
-classify s p = (bmu, bmuDiff, report)
-  where sFull = s { maxSize = numModels s, allowDeletion = False }
-          -- don't allow any changes!
-        (bmu, bmuDiff, report, _) = classify' sFull p
-
-
--- | Internal method.
--- NOTE: This function may create a new model, but it does not modify
--- existing models.
-classify'
-  :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
-    => SGM t x k p -> p -> (k, x, M.Map k (p, x), SGM t x k p)
-classify' s p
-  | isEmpty s                 = classify' (addModel p s) p
-  | bmuDiff > diffThreshold s
-      && (numModels s < maxSize s || allowDeletion s)
-                              = classify' (addModel p s) p
-  | otherwise                 = (bmu, bmuDiff, report, s')
+classify s p
+  | isEmpty s = error "SGM has no models"
+  | otherwise = (bmu, bmuDiff, report)
   where report
           = M.map (\p0 -> (p0, difference s p p0)) . modelMap $ s
         (bmu, bmuDiff)
           = head . sortBy matchOrder . map (\(k, (_, x)) -> (k, x))
               . M.toList $ report
-        s' = incrementCounter bmu s
 
 -- | Order models by ascending difference from the input pattern,
 --   then by creation order (label number).
@@ -254,21 +284,50 @@ matchOrder (a, b) (c, d) = compare (b, a) (d, c)
 --   closely matches @p@, and updates it to be a somewhat better match.
 --   If necessary, it will create a new node and model.
 --   Returns the ID of the node with the best matching model,
---   the difference between the best matching model and the pattern,
---   the differences between the input and each model in the SGM,
+--   the difference between the pattern and the best matching model
+--   in the original SGM (before training or adding a new model),
+--   the differences between the pattern and each model in the updated
+--   SGM,
 --   and the updated SGM.
 trainAndClassify
+  :: (Num t, Ord t, Fractional x, Num x, Ord x, Enum k, Ord k)
+    => SGM t x k p -> p -> (k, x, M.Map k (p, x), SGM t x k p)
+trainAndClassify s p
+  | size s < 2               = addModelTrainAndClassify s p
+  | bmuDiff > diffThreshold
+       && size s < capacity s = addModelTrainAndClassify s p
+  | bmuDiff > cutoff         = (bmu4, bmuDiff, report4, s4)
+  | otherwise                = (bmu, bmuDiff, report, s2)
+  where diffThreshold = meanModelDiff s
+        (bmu, bmuDiff, report, s2) = trainAndClassify' s p
+        (k1, k2, cutoff) = twoMostSimilar s
+        s3 = mergeAddModel s k1 k2 p
+        (bmu4, _, report4, s4) = trainAndClassify' s3 p
+
+-- | Internal method.
+-- NOTE: This function will adjust the model and update the match
+-- for the BMU.
+trainAndClassify'
   :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
     => SGM t x k p -> p -> (k, x, M.Map k (p, x), SGM t x k p)
-trainAndClassify s p = (bmu, bmuDiff, report, s3)
-  where (bmu, bmuDiff, report, s2) = classify' s p
+trainAndClassify' s p = (bmu2, bmuDiff, report, s3)
+  where (bmu, bmuDiff, _) = classify s p
+        s2 = incrementCounter bmu s
         s3 = trainNode s2 bmu p
+        (bmu2, _, report) = classify s3 p
+
+-- | Internal method.
+addModelTrainAndClassify
+  :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
+    => SGM t x k p -> p -> (k, x, M.Map k (p, x), SGM t x k p)
+addModelTrainAndClassify s p = (bmu, 1, report, s')
+  where (bmu, _, report, s') = trainAndClassify' (addNode p s) p
 
 -- | @'train' s p@ identifies the model in @s@ that most closely
 --   matches @p@, and updates it to be a somewhat better match.
 --   If necessary, it will create a new node and model.
 train
-  :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
+  :: (Num t, Ord t, Fractional x, Num x, Ord x, Enum k, Ord k)
     => SGM t x k p -> p -> SGM t x k p
 train s p = s'
   where (_, _, _, s') = trainAndClassify s p
@@ -277,7 +336,7 @@ train s p = s'
 --   model in @s@ that most closely matches @p@,
 --   and updates it to be a somewhat better match.
 trainBatch
-  :: (Num t, Ord t, Num x, Ord x, Enum k, Ord k)
+  :: (Num t, Ord t, Fractional x, Num x, Ord x, Enum k, Ord k)
     => SGM t x k p -> [p] -> SGM t x k p
 trainBatch = foldl' train
 

@@ -10,8 +10,10 @@
 -- Tests
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleInstances,
-    FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults -fno-warn-orphans #-}
 
 module Data.Datamining.Clustering.SGMQC
@@ -19,19 +21,24 @@ module Data.Datamining.Clustering.SGMQC
     test
   ) where
 
-import Control.DeepSeq (deepseq)
-import Data.Datamining.Pattern (adjustNum, absDifference)
-import Data.Datamining.Clustering.SGMInternal
-import Data.List ((\\), minimumBy)
-import qualified Data.Map.Strict as M
-import Data.Ord (comparing)
-import Data.Word (Word16)
-import System.Random (Random)
-import Test.Framework as TF (Test, testGroup)
-import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck ((==>), Gen, Arbitrary, Property, Positive,
-  arbitrary, shrink, choose, property, sized, suchThat, vectorOf,
-  getPositive)
+import           Control.DeepSeq                        (deepseq)
+import           Data.Datamining.Clustering.SGMInternal
+import           Data.Datamining.Pattern                (absDifference,
+                                                         adjustNum)
+import           Data.List                              (minimumBy, (\\))
+import qualified Data.Map.Strict                        as M
+import           Data.Ord                               (comparing)
+import           Data.Word                              (Word16)
+import           System.Random                          (Random)
+import           Test.Framework                         as TF (Test, testGroup)
+import           Test.Framework.Providers.QuickCheck2   (testProperty)
+import           Test.QuickCheck                        (Arbitrary, Gen,
+                                                         Positive, Property,
+                                                         arbitrary, choose,
+                                                         getPositive, property,
+                                                         shrink, sized,
+                                                         suchThat, vectorOf,
+                                                         (==>))
 
 newtype UnitInterval a = UnitInterval {getUnitInterval :: a}
  deriving ( Eq, Ord, Show, Read)

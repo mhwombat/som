@@ -10,11 +10,11 @@
 -- Tests
 --
 ------------------------------------------------------------------------
+{-# LANGUAGE CPP                   #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE TypeFamilies          #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults -fno-warn-orphans #-}
 
 module Data.Datamining.Clustering.DSOMQC
@@ -22,27 +22,37 @@ module Data.Datamining.Clustering.DSOMQC
     test
   ) where
 
-import Data.Datamining.Pattern (euclideanDistanceSquared,
-  magnitudeSquared, adjustNum, absDifference)
-import Data.Datamining.Clustering.Classifier(classify,
-  classifyAndTrain, differences, diffAndTrain, models,
-  numModels, train, trainBatch)
-import Data.Datamining.Clustering.DSOMInternal
+import           Data.Datamining.Clustering.Classifier   (classify,
+                                                          classifyAndTrain,
+                                                          diffAndTrain,
+                                                          differences, models,
+                                                          numModels, train,
+                                                          trainBatch)
+import           Data.Datamining.Clustering.DSOMInternal
+import           Data.Datamining.Pattern                 (absDifference,
+                                                          adjustNum,
+                                                          euclideanDistanceSquared,
+                                                          magnitudeSquared)
 
 #if MIN_VERSION_base(4,8,0)
 #else
-import Control.Applicative
+import           Control.Applicative
 #endif
 
-import Data.List (sort)
-import Math.Geometry.Grid (size)
-import Math.Geometry.Grid.Hexagonal (HexHexGrid, hexHexGrid)
-import Math.Geometry.GridMap ((!), elems)
-import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
-import Test.Framework as TF (Test, testGroup)
-import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck ((==>), Gen, Arbitrary, arbitrary, choose,
-  Property, property, sized, suchThat, vectorOf, shrink)
+import           Data.List                               (sort)
+import           Math.Geometry.Grid                      (size)
+import           Math.Geometry.Grid.Hexagonal            (HexHexGrid,
+                                                          hexHexGrid)
+import           Math.Geometry.GridMap                   (elems, (!))
+import           Math.Geometry.GridMap.Lazy              (LGridMap, lazyGridMap)
+import           Test.Framework                          as TF (Test, testGroup)
+import           Test.Framework.Providers.QuickCheck2    (testProperty)
+import           Test.QuickCheck                         (Arbitrary, Gen,
+                                                          Property, arbitrary,
+                                                          choose, property,
+                                                          shrink, sized,
+                                                          suchThat, vectorOf,
+                                                          (==>))
 
 positive :: (Num a, Ord a, Arbitrary a) => Gen a
 positive = arbitrary `suchThat` (> 0)
@@ -109,16 +119,16 @@ adjustTestPattern (TestPattern target) r (TestPattern x)
 data DSOMTestData
   = DSOMTestData
     {
-      som1 :: DSOM (LGridMap HexHexGrid) Double (Int, Int) TestPattern,
-      params1 :: RougierArgs,
+      som1         :: DSOM (LGridMap HexHexGrid) Double (Int, Int) TestPattern,
+      params1      :: RougierArgs,
       trainingSet1 :: [TestPattern]
     }
 
 instance Show DSOMTestData where
   show s = "buildDSOMTestData " ++ show (size . gridMap . som1 $ s)
     ++ " " ++ show (elems . gridMap . som1 $ s)
-    ++ " (" ++ show (params1 s) 
-    ++ ") " ++ show (trainingSet1 s) 
+    ++ " (" ++ show (params1 s)
+    ++ ") " ++ show (trainingSet1 s)
 
 buildDSOMTestData
   :: Int -> [TestPattern] -> RougierArgs -> [TestPattern] -> DSOMTestData
@@ -210,16 +220,16 @@ prop_batch_training_works (DSOMTestData s _ xs) = property $
 data SpecialDSOMTestData
   = SpecialDSOMTestData
     {
-      som2 :: DSOM (LGridMap HexHexGrid) Double (Int, Int) TestPattern,
-      params2 :: Double,
+      som2         :: DSOM (LGridMap HexHexGrid) Double (Int, Int) TestPattern,
+      params2      :: Double,
       trainingSet2 :: [TestPattern]
     }
 
 instance Show SpecialDSOMTestData where
   show s = "buildDSOMTestData " ++ show (size . gridMap . som2 $ s)
     ++ " " ++ show (elems . gridMap . som2 $ s)
-    ++ " (" ++ show (params2 s) 
-    ++ ") " ++ show (trainingSet2 s) 
+    ++ " (" ++ show (params2 s)
+    ++ ") " ++ show (trainingSet2 s)
 
 stepFunction :: Double -> Double -> Double -> Double -> Double
 stepFunction r _ _ d = if d == 0 then r else 0.0

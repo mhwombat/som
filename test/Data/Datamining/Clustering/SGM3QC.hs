@@ -133,8 +133,7 @@ prop_classify_never_creates_model (TestSGM s _) x
 prop_classify_never_causes_error_unless_som_empty
   :: TestSGM -> Double -> Property
 prop_classify_never_causes_error_unless_som_empty (TestSGM s _) p
-  = not (isEmpty s) ==> property $ deepseq x True
-  where x = classify s p
+  = not (isEmpty s) ==> property $ deepseq (classify s p) True
 
 prop_trainNode_reduces_diff :: TestSGM -> Double -> Property
 prop_trainNode_reduces_diff (TestSGM s _) x = not (isEmpty s) ==>
@@ -153,6 +152,10 @@ prop_training_reduces_diff (TestSGM s _) x = not (isEmpty s) ==>
         (_, diffAfter, _) = classify s2 x
 
 -- TODO prop: map will never exceed capacity
+
+prop_train_never_causes_error :: TestSGM -> Double -> Property
+prop_train_never_causes_error (TestSGM s _) p
+  = property $ deepseq (train s p) True
 
 prop_train_only_modifies_one_model
   :: TestSGM -> Double -> Property
@@ -204,6 +207,7 @@ prop_classification_stabilises (TestSGM s _)  ps
         sStable3 = trainBatch sStable2 ps
         (k2, _, _) = classify sStable3 (head ps)
 
+
 test :: Test
 test = testGroup "QuickCheck Data.Datamining.Clustering.SGM2"
   [
@@ -223,6 +227,8 @@ test = testGroup "QuickCheck Data.Datamining.Clustering.SGM2"
       prop_trainNode_reduces_diff,
     testProperty "prop_training_reduces_diff"
       prop_training_reduces_diff,
+    testProperty "prop_train_never_causes_error"
+      prop_train_never_causes_error,
     testProperty "prop_train_only_modifies_one_model"
       prop_train_only_modifies_one_model,
     testProperty "prop_train_increments_counter"

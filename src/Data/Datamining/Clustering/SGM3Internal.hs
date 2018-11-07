@@ -205,11 +205,12 @@ twoMostSimilar s
 -- | Returns the labels of the two most similar models, and the
 --   difference between them.
 meanModelDiff
-  :: (Fractional x, Num x, Ord x, Eq k, Ord k)
+  :: (Fractional x, Real x, Num x, Ord x, Eq k, Ord k)
   => SGM t x k p -> x
 meanModelDiff s
   | size s == 0 = 0
-  | otherwise  = mean . map snd $ modelDiffs s
+  | otherwise  = fromRational . mean . map (toRational . snd)
+                   $ modelDiffs s
 
 -- | Calculate the mean of a set of values.
 -- mean :: (Eq a, Fractional a, Foldable t) => t a -> a
@@ -290,12 +291,12 @@ matchOrder (a, b) (c, d) = compare (b, a) (d, c)
 --   SGM,
 --   and the updated SGM.
 trainAndClassify
-  :: (Num t, Ord t, Fractional x, Num x, Ord x, Enum k, Ord k)
+  :: (Num t, Ord t, Fractional x, Real x, Num x, Ord x, Enum k, Ord k)
     => SGM t x k p -> p -> (k, x, M.Map k (p, x), SGM t x k p)
 trainAndClassify s p
+  | size s == capacity s      = (bmu, bmuDiff, report, s2)
   | size s < 2               = addModelTrainAndClassify s p
-  | bmuDiff > diffThreshold
-       && size s < capacity s = addModelTrainAndClassify s p
+  | bmuDiff > diffThreshold  = addModelTrainAndClassify s p
   | bmuDiff > cutoff         = (bmu4, bmuDiff, report4, s4)
   | otherwise                = (bmu, bmuDiff, report, s2)
   where diffThreshold = meanModelDiff s
@@ -327,7 +328,7 @@ addModelTrainAndClassify s p = (bmu, 1, report, s')
 --   matches @p@, and updates it to be a somewhat better match.
 --   If necessary, it will create a new node and model.
 train
-  :: (Num t, Ord t, Fractional x, Num x, Ord x, Enum k, Ord k)
+  :: (Num t, Ord t, Fractional x, Real x, Num x, Ord x, Enum k, Ord k)
     => SGM t x k p -> p -> SGM t x k p
 train s p = s'
   where (_, _, _, s') = trainAndClassify s p
@@ -336,7 +337,7 @@ train s p = s'
 --   model in @s@ that most closely matches @p@,
 --   and updates it to be a somewhat better match.
 trainBatch
-  :: (Num t, Ord t, Fractional x, Num x, Ord x, Enum k, Ord k)
+  :: (Num t, Ord t, Fractional x, Real x, Num x, Ord x, Enum k, Ord k)
     => SGM t x k p -> [p] -> SGM t x k p
 trainBatch = foldl' train
 

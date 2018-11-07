@@ -2,10 +2,10 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: adbfa8982ae14db2b504e528d5122057466a1628c04b8f3d74dbbb3d25dc2fdd
+-- hash: ed692aa37706e47ed881b4ea21769be3add5357c26ac89e9d5408c65a03158c2
 
 name:           som
-version:        10.1.3
+version:        10.1.5
 synopsis:       Self-Organising Maps
 description:    Please see the README on GitHub at <https://github.com/mhwombat/som#readme>
 category:       Math

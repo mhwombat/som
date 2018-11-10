@@ -10,28 +10,22 @@
 -- Tests
 --
 ------------------------------------------------------------------------
-import           Data.Datamining.Clustering.DSOMQC
+import Data.Datamining.Clustering.DSOMQC
     (test)
-import           Data.Datamining.Clustering.SGM2QC
+import Data.Datamining.Clustering.SGMQC
     (test)
-import           Data.Datamining.Clustering.SGM3QC
+import Data.Datamining.Clustering.SOMQC
     (test)
-import           Data.Datamining.Clustering.SGMQC
-    (test)
-import           Data.Datamining.Clustering.SOMQC
-    (test)
-import           Data.Datamining.PatternQC
+import Data.Datamining.PatternQC
     (test)
 
-import           Test.Framework                    as TF
+import Test.Framework                    as TF
     (Test, defaultMain)
 
 tests :: [TF.Test]
 tests =
   [
     Data.Datamining.PatternQC.test,
-    Data.Datamining.Clustering.SGM3QC.test,
-    Data.Datamining.Clustering.SGM2QC.test,
     Data.Datamining.Clustering.SGMQC.test,
     Data.Datamining.Clustering.SOMQC.test,
     Data.Datamining.Clustering.DSOMQC.test

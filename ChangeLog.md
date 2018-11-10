@@ -1,6 +1,6 @@
 # Changelog for som
 
-
+10.1.6 Removed SGM2 and SGM3; they aren't ready for use.
 10.1.5 Bug fix in SGM3.
 10.1.4 Modified SGM3 to work with limited range floating point types.
 10.1.3 Added SGM3.

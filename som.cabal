@@ -2,10 +2,10 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ed692aa37706e47ed881b4ea21769be3add5357c26ac89e9d5408c65a03158c2
+-- hash: a1c7e199c3b4a41a8be19860537f59c1300e6b50b3b4829d87755dadf2ce7017
 
 name:           som
-version:        10.1.5
+version:        10.1.6
 synopsis:       Self-Organising Maps
 description:    Please see the README on GitHub at <https://github.com/mhwombat/som#readme>
 category:       Math
@@ -32,10 +32,6 @@ library
       Data.Datamining.Clustering.DSOM
       Data.Datamining.Clustering.DSOMInternal
       Data.Datamining.Clustering.SGM
-      Data.Datamining.Clustering.SGM2
-      Data.Datamining.Clustering.SGM2Internal
-      Data.Datamining.Clustering.SGM3
-      Data.Datamining.Clustering.SGM3Internal
       Data.Datamining.Clustering.SGMInternal
       Data.Datamining.Clustering.SOM
       Data.Datamining.Clustering.SOMInternal
@@ -57,8 +53,6 @@ test-suite som-test
   main-is: Spec.hs
   other-modules:
       Data.Datamining.Clustering.DSOMQC
-      Data.Datamining.Clustering.SGM2QC
-      Data.Datamining.Clustering.SGM3QC
       Data.Datamining.Clustering.SGMQC
       Data.Datamining.Clustering.SOMQC
       Data.Datamining.PatternQC

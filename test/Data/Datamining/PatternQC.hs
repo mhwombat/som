@@ -1,7 +1,7 @@
 ------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Datamining.PatternQC
--- Copyright   :  (c) Amy de Buitléir 2012-2018
+-- Copyright   :  (c) Amy de Buitléir 2012-2019
 -- License     :  BSD-style
 -- Maintainer  :  amy@nualeargais.ie
 -- Stability   :  experimental

@@ -1,5 +1,12 @@
 # Changelog for som
 
+10.1.11 Simplified nix build config.
+
+10.1.10 Added SGM6.
+
+10.1.9 Added SGM4.
+       Updated copyright year.
+
 10.1.8 Revamped to work with Nix + cabal-install.
 
 10.1.7 Revamped to work with Nix + Stack.

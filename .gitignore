@@ -1,7 +1,14 @@
+# Not ready for prime time
+examples2
+notes
+otherImplementations
+
 # Build artifacts
 .stack-work
 dist
+dist-newstyle
 result
+.ghc.environment*
 
 # Backup files
 *~

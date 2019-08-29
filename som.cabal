@@ -1,20 +1,18 @@
+cabal-version:       >=1.10
 name:                som
-version:             10.1.8
+version:             10.1.11
 synopsis:            Self-Organising Maps
-description:         Please see the README on GitHub at <https://github.com/mhwombat/som#readme>
-homepage:            https://github.com/mhwombat/som#readme
+-- description:
+homepage:            https://github.com/mhwombat/som
+bug-reports:         https://github.com/mhwombat/som/issues
 license:             BSD3
 license-file:        LICENSE
 author:              Amy de Buitléir
 maintainer:          amy@nualeargais.ie
 copyright:           2012-2019 Amy de Buitléir
 category:            Math
-bug-reports:         https://github.com/mhwombat/som/issues
 build-type:          Simple
-extra-source-files:
-    README.md
-    ChangeLog.md
-cabal-version:       >=1.10
+extra-source-files:  ChangeLog.md, README.md
 
 library
   exposed-modules:
@@ -23,20 +21,22 @@ library
       Data.Datamining.Clustering.DSOMInternal
       Data.Datamining.Clustering.SGM
       Data.Datamining.Clustering.SGMInternal
+      Data.Datamining.Clustering.SGM4
+      Data.Datamining.Clustering.SGM4Internal
+      Data.Datamining.Clustering.SGM6
+      Data.Datamining.Clustering.SGM6Internal
       Data.Datamining.Clustering.SOM
       Data.Datamining.Clustering.SOMInternal
       Data.Datamining.Pattern
-  other-modules:
-      Paths_som
-  hs-source-dirs:
-      src
+  other-modules:       Paths_som
+  hs-source-dirs:      src
   ghc-options: -Wall
   build-depends:
       base >=4.7 && <5
     , containers ==0.5.* || ==0.6.*
     , deepseq ==1.4.*
-    , grid >=7.8.12 && <7.9
-  default-language: Haskell2010
+    , grid >=7.8.14 && <7.9
+  default-language:    Haskell2010
 
 test-suite som-test
   type: exitcode-stdio-1.0
@@ -44,6 +44,8 @@ test-suite som-test
   other-modules:
       Data.Datamining.Clustering.DSOMQC
       Data.Datamining.Clustering.SGMQC
+      Data.Datamining.Clustering.SGM4QC
+      Data.Datamining.Clustering.SGM6QC
       Data.Datamining.Clustering.SOMQC
       Data.Datamining.PatternQC
       Paths_som

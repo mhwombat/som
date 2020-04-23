@@ -1,0 +1,175 @@
+  prop_classify_chooses_best_fit: [Failed]
+*** Failed! (after 5 tests and 1 shrink):
+Exception:
+  there aren't two models to merge
+  CallStack (from HasCallStack):
+    error, called at src/Data/Datamining/Clustering/SGM4Internal.hs:196:18 in som-10.1.9-G8joL7kNoeQ17oiYUmZnBq:Data.Datamining.Clustering.SGM4Internal
+buildTestSGM 0.7540576608382734 281.8334404959928 1 [0.3566400076811109,-0.5180917619062891,9.18740690268928,0.12307326488528202]
+0.0
+(used seed -4519282668567907076)
+
+:l Data.Datamining.Clustering.SGM4QC
+(TestSGM s _) = buildTestSGM 0.7540576608382734 281.8334404959928 1 [0.3566400076811109,-0.5180917619062891,9.18740690268928,0.12307326488528202]
+x = 0.0 :: Double
+λ> modelMap $ s
+fromList *** Exception: there aren't two models to merge
+CallStack (from HasCallStack):
+  error, called at src/Data/Datamining/Clustering/SGM4Internal.hs:196:18 in main:Data.Datamining.Clustering.SGM4Internal
+
+
+(bmu, _, report) = Data.Datamining.Clustering.SGM4Internal.classify s x
+
+r0 = 0.7540576608382734 :: Double
+d = 281.8334404959928 :: Double
+maxSz = 1 :: Int
+ps = [0.3566400076811109,-0.5180917619062891,9.18740690268928,0.12307326488528202] :: [Double]
+lrf = exponential r0 d
+s = makeSGM lrf maxSz absDifference adjustNum
+(_, _, _, s') = trainAndClassify s 0.3566400076811109
+s = s'
+(_, _, _, s') = trainAndClassify s (-0.5180917619062891)
+λ> modelMap s'
+fromList *** Exception: there aren't two models to merge
+CallStack (from HasCallStack):
+  error, called at src/Data/Datamining/Clustering/SGM4Internal.hs:196:18 in main:Data.Datamining.Clustering.SGM4Internal
+
+
+
+[][72160] after training with 72160
+[72160,151100] after training with 151100
+[72160,151100,351600] after training with 351600
+[72160,151100,351600,350100] after training with 350100
+
+absDifference 72160 151100
+absDifference 72160 351600
+absDifference 151100 351600
+mean diff between models is 186293
+absDifference 350100 351600
+
+
+let lrf = exponential 0.5 0.1 :: Int -> Double
+let s = makeSGM lrf 10 absDifference adjustNum :: SGM Int Double Word8 Double
+s' <- trainAndPrint s 72160
+s = s'
+s' <- trainAndPrint s 151100
+s = s'
+s' <- trainAndPrint s 351600
+s = s'
+s' <- trainAndPrint s 350100
+s = s'
+
+:l Data.Datamining.Clustering.SGM3Internal
+import Data.Word (Word8)
+absDifference x y = abs (x - y)
+adjustNum target r x | r < 0     = error "Negative learning rate" | r > 1     = error "Learning rate > 1" | otherwise = x + r*(target - x)
+
+let lrf = exponential 0.5 0.1 :: Int -> Double
+let s = makeSGM lrf 10 absDifference adjustNum :: SGM Int Double Word8 Double
+
+s2 = train s 72160
+s3 = train s2 151100
+s4 = train s3 351600
+s5 = train s4 350100
+modelMap s5
+
+
+
+
+stack ghci --test
+:l Data.Datamining.Clustering.SGM2QC
+(TestSGM s _) = buildTestSGM 0.20309622618787848 4.325817341698261 5 [3.8911598335513835,-3.2991325594717704,0.26380084423274347,-1.2076523163235862]
+ps = [0.0,2.0] :: [Double]
+
+After trainBatch, there are gaps in the labels!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+s' = train s 0.0
+toMap s'
+
+s = s'
+s' = train s 2.0
+toMap s'
+
+prop_classification_stabilises :: TestSGM -> [Double] -> Property
+prop_classification_stabilises (TestSGM s _)  ps
+  = (not . null $ ps) && capacity s > length ps ==> k2 == k1
+  where sStable = trainBatch s . concat . replicate 10 $ ps
+        (k1, _, _, sStable2) = trainAndClassify sStable (head ps)
+        sStable3 = trainBatch sStable2 ps
+        (k2, _, _) = classify sStable3 (head ps)
+
+
+
+:l Data.Datamining.Clustering.SGM2Internal
+import Data.Word (Word16)
+import Data.Datamining.Pattern (adjustNum, absDifference)
+
+lrf = exponential 0.2059993679174087 0.9839766571965867
+s = makeSGM lrf 1 True absDifference adjustNum :: SGM Int Double Word16 Double
+
+stack exec ghci
+:set -isrc:test
+:set -package=QuickCheck
+:l Data.Datamining.Clustering.SGM2QC
+quickCheck prop_classify_never_causes_error
+
+
+*** Failed! (after 1 test):                            
+Exception:
+  SGM has no nodes
+  CallStack (from HasCallStack):
+    error, called at /home/amy/néal/som/src/Data/Datamining/Clustering/SGMInternal.hs:186:28 in main:Data.Datamining.Clustering.SGMInternal
+buildTestSGM 0.7342514278653602 0.700071398803423 1 7.244570281643381e-3 True []
+0.0
+
+
+:l Data.Datamining.Clustering.SGMQC
+(TestSGM s _) = buildTestSGM 0.7342514278653602 0.700071398803423 1 7.244570281643381e-3 True []
+p = 0.0
+:set -fbreak-on-exception
+:set stop :list
+:trace Data.Datamining.Clustering.SGMInternal.classify s p
+
+
+:l Data.Datamining.Clustering.SGMInternal
+import Data.Word (Word16)
+r0 = 0.7342514278653602
+d = 0.700071398803423
+maxSz = 1
+dt = 7.244570281643381e-3
+ad = True
+ps = []
+lrf = exponential r0 d
+absDifference x y = abs (x - y)
+adjustNum' r target x = x + r*(target - x)
+adjustNum target r x = adjustNum' r target x
+s = makeSGM lrf maxSz dt ad absDifference adjustNum :: SGM Int Double Word16 Double
+s' = trainBatch s ps
+s = s'
+Data.Datamining.Clustering.SGMInternal.maxSize s
+p = 0.0
+Data.Datamining.Clustering.SGMInternal.classify s p
+sFull = s { Data.Datamining.Clustering.SGMInternal.maxSize = numModels s, allowDeletion = False }
+Data.Datamining.Clustering.SGMInternal.maxSize sFull
+numModels s
+numModels sFull
+Data.Datamining.Clustering.SGMInternal.maxSize s
+Data.Datamining.Clustering.SGMInternal.maxSize sFull
+
+s = sFull
+isEmpty s
+s = addModel p s
+report = M.map (\p0 -> (p0, difference s p p0)) . modelMap $ s
+
+classify' s p
+isEmpty s
+  | isEmpty s                 = classify' (addModel p s) p
+  | bmuDiff > diffThreshold s
+      && (numModels s < maxSize s || allowDeletion s)
+                              = classify' (addModel p s) p
+  | otherwise                 = (bmu, bmuDiff, report, s')
+  where report
+          = M.map (\p0 -> (p0, difference s p p0)) . modelMap $ s
+        (bmu, bmuDiff)
+          = head . sortBy matchOrder . map (\(k, (_, x)) -> (k, x))
+              . M.toList $ report
+        s' = incrementCounter bmu s

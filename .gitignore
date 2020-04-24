@@ -1,9 +1,10 @@
 # Build artifacts
+.ghc.environment*
 .stack-work
+cabal.project.local
 dist
 dist-newstyle
 result
-.ghc.environment*
 
 # Backup files
 *~

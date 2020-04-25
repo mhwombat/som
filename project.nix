@@ -10,6 +10,8 @@ mkDerivation {
     base containers deepseq grid QuickCheck random test-framework
     test-framework-quickcheck2
   ];
+  enableLibraryProfiling = true;
+  enableExecutableProfiling = true;
   homepage = "https://github.com/mhwombat/som";
   description = "Self-Organising Maps";
   license = stdenv.lib.licenses.bsd3;

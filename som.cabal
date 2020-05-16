@@ -1,20 +1,21 @@
-cabal-version:       >=1.10
+synopsis:            Self-Organising Maps
 name:                som
 version:             10.1.11
-synopsis:            Self-Organising Maps
--- description:
 homepage:            https://github.com/mhwombat/som
 bug-reports:         https://github.com/mhwombat/som/issues
 license:             BSD3
 license-file:        LICENSE
 author:              Amy de Buitléir
-maintainer:          amy@nualeargais.ie
-copyright:           2012-2019 Amy de Buitléir
+maintainer:          Amy de Buitléir <amy@nualeargais.ie>
+copyright:           2012-2020 Amy de Buitléir
 category:            Math
 build-type:          Simple
+cabal-version:       >=1.10
 extra-source-files:  ChangeLog.md, README.md
 
 library
+  hs-source-dirs:      src
+  default-language:    Haskell2010
   exposed-modules:
       Data.Datamining.Clustering.Classifier
       Data.Datamining.Clustering.DSOM
@@ -29,18 +30,18 @@ library
       Data.Datamining.Clustering.SOMInternal
       Data.Datamining.Pattern
   other-modules:       Paths_som
-  hs-source-dirs:      src
   ghc-options: -Wall
-  build-depends:
-      base >=4.7 && <5
+  build-depends: base >=4.11 && <5
     , containers ==0.5.* || ==0.6.*
     , deepseq ==1.4.*
     , grid >=7.8.14 && <7.9
-  default-language:    Haskell2010
 
 test-suite som-test
   type: exitcode-stdio-1.0
+  hs-source-dirs:   test
   main-is: Spec.hs
+  default-language: Haskell2010
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
   other-modules:
       Data.Datamining.Clustering.DSOMQC
       Data.Datamining.Clustering.SGMQC
@@ -49,12 +50,8 @@ test-suite som-test
       Data.Datamining.Clustering.SOMQC
       Data.Datamining.PatternQC
       Paths_som
-  hs-source-dirs:
-      test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
-  build-depends:
-      QuickCheck
-    , base >=4.6 && <5
+  build-depends:    base >=4.11 && < 5
+    , QuickCheck
     , containers
     , deepseq
     , grid
@@ -62,4 +59,3 @@ test-suite som-test
     , som
     , test-framework
     , test-framework-quickcheck2
-  default-language: Haskell2010

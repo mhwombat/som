@@ -13,6 +13,9 @@ let
           "som"
           (gitignore ./.)
           {};
+      ### local imports
+      "grid" =
+        (import /home/amy/github/grid/default.nix {}).grid;
     };
   };
 

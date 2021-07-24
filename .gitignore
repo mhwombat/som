@@ -1,4 +1,6 @@
+# misc
 *.lock
+*~
 
 # nix
 result

@@ -1,7 +1,7 @@
 cabal-version:      2.4
-synopsis:           Self-Organising Maps
 name:               som
 version:            10.1.11
+synopsis:           Self-Organising Maps
 homepage:           https://github.com/mhwombat/som
 bug-reports:        https://github.com/mhwombat/som/issues
 license:            BSD-3-Clause
@@ -47,7 +47,7 @@ test-suite som-test
                       Data.Datamining.PatternQC
                       Paths_som
     ghc-options:      -threaded -rtsopts -with-rtsopts=-N -Wall
-    build-depends:    base ^>=4.14.1.0
+    build-depends:    base
                       , QuickCheck
                       , containers
                       , deepseq

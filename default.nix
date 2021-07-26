@@ -3,4 +3,7 @@ let
 in 
   pkgs.haskellPackages.developPackage {
     root = ./.;
+    source-overrides = {
+      grid = ../grid;
+    };
   }

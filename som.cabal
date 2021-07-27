@@ -39,7 +39,6 @@ library
     Data.Datamining.Clustering.SOM
     Data.Datamining.Clustering.SOMInternal
     Data.Datamining.Pattern
-
   other-modules:   Paths_som
   autogen-modules: Paths_som
   ghc-options:     -Wall -Wunused-packages
@@ -48,7 +47,6 @@ library
     , containers  >=0.5    && <0.7
     , deepseq     ^>=1.4
     , grid        ^>=7.8.14
-
   hs-source-dirs:  src
 
 test-suite som-test
@@ -63,10 +61,8 @@ test-suite som-test
     Data.Datamining.Clustering.SGMQC
     Data.Datamining.Clustering.SOMQC
     Data.Datamining.PatternQC
-
   ghc-options:
     -threaded -rtsopts -with-rtsopts=-N -Wall -Wunused-packages
-
   build-depends:
     , base
     , containers

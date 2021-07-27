@@ -4,7 +4,6 @@ version:            10.1.11
 synopsis:           Self-Organising Maps
 description:
   Please see the README on GitHub at <https://github.com/mhwombat/som#readme>
-
 homepage:           https://github.com/mhwombat/som
 bug-reports:        https://github.com/mhwombat/som/issues
 license:            BSD-3-Clause

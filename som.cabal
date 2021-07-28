@@ -46,7 +46,7 @@ library
     , base        >=4.7    && <5
     , containers  >=0.5    && <0.7
     , deepseq     ^>=1.4
-    , grid        ^>=7.8.14
+    , grid        ^>=7.8.15
 
 test-suite som-test
   import:         common-stuff

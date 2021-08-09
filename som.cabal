@@ -33,8 +33,6 @@ library
     Data.Datamining.Clustering.SGM
     Data.Datamining.Clustering.SGM4
     Data.Datamining.Clustering.SGM4Internal
-    Data.Datamining.Clustering.SGM6
-    Data.Datamining.Clustering.SGM6Internal
     Data.Datamining.Clustering.SGMInternal
     Data.Datamining.Clustering.SOM
     Data.Datamining.Clustering.SOMInternal
@@ -56,7 +54,6 @@ test-suite som-test
   other-modules:
     Data.Datamining.Clustering.DSOMQC
     Data.Datamining.Clustering.SGM4QC
-    Data.Datamining.Clustering.SGM6QC
     Data.Datamining.Clustering.SGMQC
     Data.Datamining.Clustering.SOMQC
     Data.Datamining.PatternQC

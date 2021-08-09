@@ -136,20 +136,24 @@ time = sum . map snd . M.elems . toMap
 
 -- | Adds a new node to the SGM.
 addNode
-  :: (Num t, Enum k, Ord k)
+  :: (Num t, Bounded k, Enum k, Ord k)
     => SGM t x k p -> p -> SGM t x k p
 addNode s p = addNodeAt s (nextIndex s) p
 
-addNodeAt :: (Num t, Enum k, Ord k) => SGM t x k p -> k -> p -> SGM t x k p
+addNodeAt
+  :: (Num t, Bounded k, Enum k, Ord k)
+    => SGM t x k p -> k -> p -> SGM t x k p
 addNodeAt s k p
   | atCapacity s   = error "SGM is full"
   | s `hasLabel` k = error "label already exists"
-  | otherwise      = s { toMap=gm', nextIndex=kNext' }
+  | otherwise      = s { toMap=gm', nextIndex=kNext }
   where gm = toMap s
         gm' = M.insert k (p, 0) gm
-        kNext = nextIndex s
-        kNext' | kNext == k = succ k
-               | otherwise = kNext
+        -- kNext = succ . maximum . M.keys $ gm'
+        allPossibleIndices = enumFromTo minBound maxBound
+        usedIndices = M.keys gm'
+        availableIndices = allPossibleIndices \\ usedIndices
+        kNext = head availableIndices
 
 -- | Increments the match counter.
 incrementCounter :: (Num t, Ord k) => k -> SGM t x k p -> SGM t x k p
@@ -174,12 +178,21 @@ trainNode s k target = s { toMap=gm' }
 hasLabel :: Ord k => SGM t x k p -> k -> Bool
 hasLabel s k = M.member k . toMap $ s
 
-imprint :: (Num t, Ord t, Fractional x, Num x, Ord x, Enum k, Ord k)
+imprint
+  :: (Num t, Ord t, Fractional x, Num x, Ord x,
+     Bounded k, Enum k, Ord k)
   => SGM t x k p -> k -> p -> SGM t x k p
 imprint s k p
   | s `hasLabel` k = trainNode s k p
   | atCapacity s   = train s p
   | otherwise      = addNodeAt s k p
+
+imprintBatch
+  :: (Num t, Ord t, Fractional x, Num x, Ord x,
+     Bounded k, Enum k, Ord k)
+  => SGM t x k p -> [(k, p)] -> SGM t x k p
+imprintBatch = foldl' imprintOne
+  where imprintOne s' (k, p) = imprint s' k p
 
 -- | Calculates the difference between all pairs of non-identical
 --   labels in the SGM.
@@ -235,7 +248,8 @@ consolidate s = (k3, s2)
         (k3, s2) = mergeModels s k1 k2
 
 consolidateAndAdd
-  :: (Num t, Ord t, Ord x, Enum k, Ord k) => SGM t x k p -> p -> SGM t x k p
+  :: (Num t, Ord t, Ord x, Bounded k, Enum k, Ord k)
+  => SGM t x k p -> p -> SGM t x k p
 consolidateAndAdd s p = addNode s' p
   where (_, s') = consolidate s
 
@@ -284,7 +298,8 @@ matchOrder (a, b) (c, d) = compare (b, a) (d, c)
 --   SGM,
 --   and the updated SGM.
 trainAndClassify
-  :: (Num t, Ord t, Fractional x, Num x, Ord x, Enum k, Ord k)
+  :: (Num t, Ord t, Fractional x, Num x, Ord x,
+     Bounded k, Enum k, Ord k)
     => SGM t x k p -> p -> (k, x, M.Map k (p, x), SGM t x k p)
 trainAndClassify s p = trainAndClassify' s' p
   where s' | size s > 1 && bmuDiff == 0        = s
@@ -312,7 +327,8 @@ trainAndClassify' s p = (bmu2, bmuDiff, report, s3)
 --   matches @p@, and updates it to be a somewhat better match.
 --   If necessary, it will create a new node and model.
 train
-  :: (Num t, Ord t, Fractional x, Num x, Ord x, Enum k, Ord k)
+  :: (Num t, Ord t, Fractional x, Num x, Ord x,
+     Bounded k, Enum k, Ord k)
     => SGM t x k p -> p -> SGM t x k p
 train s p = s'
   where (_, _, _, s') = trainAndClassify s p
@@ -321,7 +337,8 @@ train s p = s'
 --   model in @s@ that most closely matches @p@,
 --   and updates it to be a somewhat better match.
 trainBatch
-  :: (Num t, Ord t, Fractional x, Num x, Ord x, Enum k, Ord k)
+  :: (Num t, Ord t, Fractional x, Num x, Ord x,
+     Bounded k, Enum k, Ord k)
     => SGM t x k p -> [p] -> SGM t x k p
 trainBatch = foldl' train
 

@@ -65,6 +65,7 @@ module Data.Datamining.Clustering.SGM4
     train,
     trainBatch,
     imprint,
+    imprintBatch,
     -- * Other
     filter
   ) where

@@ -71,23 +71,27 @@ instance Show TestSGM where
   show (TestSGM _ desc) = desc
 
 buildTestSGM
-  :: Double -> Double -> Int -> [Double] -> TestSGM
-buildTestSGM r0 d maxSz ps = TestSGM s' desc
+  :: Double -> Double -> Int -> [Double] -> [(Word16, Double)] -> TestSGM
+buildTestSGM r0 d maxSz ps kps = TestSGM s'' desc
   where lrf = exponential r0 d
         s = makeSGM lrf maxSz absDifference adjustNum
         desc = "buildTestSGM " ++ show r0 ++ " " ++ show d
                  ++ " " ++ show maxSz
                  ++ " " ++ show ps
+                 ++ " " ++ show kps
         s' = trainBatch s ps
+        s'' = imprintBatch s' kps
 
 sizedTestSGM :: Int -> Gen TestSGM
 sizedTestSGM n = do
   maxSz <- choose (1, min (n+1) 1023)
-  let numPatterns = n
+  numTrainingPatterns <- choose (0, n)
+  let numImprintPatterns = n - numTrainingPatterns
   r0 <- choose (0, 1)
   d <- positive
-  ps <- vectorOf numPatterns arbitrary
-  return $ buildTestSGM r0 d maxSz ps
+  ps <- vectorOf numTrainingPatterns arbitrary
+  kps <- vectorOf numImprintPatterns arbitrary
+  return $ buildTestSGM r0 d maxSz ps kps
 
 instance Arbitrary TestSGM where
   arbitrary = sized sizedTestSGM
@@ -133,6 +137,10 @@ prop_training_reduces_diff (TestSGM s _) x = not (isEmpty s) ==>
         (_, diffAfter, _) = classify s2 x
 
 -- TODO prop: map will never exceed capacity
+
+prop_addNode_never_causes_error :: TestSGM -> Double -> Property
+prop_addNode_never_causes_error (TestSGM s _) p
+  = size s < capacity s ==> deepseq (addNode s p) True
 
 prop_train_never_causes_error :: TestSGM -> Double -> Property
 prop_train_never_causes_error (TestSGM s _) p
@@ -201,6 +209,8 @@ test = testGroup "QuickCheck Data.Datamining.Clustering.SGM4"
       prop_Exponential_starts_at_r0,
     testProperty "prop_Exponential_ge_0"
       prop_Exponential_ge_0,
+    testProperty "prop_addNode_never_causes_error"
+      prop_addNode_never_causes_error,
     testProperty "prop_classify_chooses_best_fit"
       prop_classify_chooses_best_fit,
     testProperty "prop_trainAndClassify_chooses_best_fit"

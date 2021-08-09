@@ -1,4 +1,37 @@
-  prop_classify_chooses_best_fit: [Failed]
+nix-shell
+cabal-repl
+:set -package=QuickCheck
+:set -package=random
+:set -package=test-framework-quickcheck2
+:set -package=test-framework
+:l Data.Datamining.Clustering.SGM4QC
+
+:m + Data.Datamining.Clustering.SGM4Internal
+:m + Data.Datamining.Pattern
+
+prop_addNode_never_causes_error: [Failed]
+*** Failed! (after 8 tests and 1 shrink):
+Exception:
+  nextIndex 2 is invalid
+  CallStack (from HasCallStack):
+    error, called at src/Data/Datamining/Clustering/SGM4Internal.hs:143:26 in som-10.1.11-inplace:Data.Datamining.Clustering.SGM4Internal
+buildTestSGM 0.7501004011533502 0.956233969199773 7 [-1.501603627247896,6.103301274910348] [(3,6.800770082296994),(2,3.8448867818873214),(0,-1.562046505134292),(5,-2.5736250710412123),(3,-1.7969774284411608)]
+0.0
+(used seed -5870023026340245572)
+
+r0 = 0.7501004011533502
+d = 0.956233969199773
+maxSz = 7
+ps = [-1.501603627247896,6.103301274910348]
+kps = [(3,6.800770082296994),(2,3.8448867818873214),(0,-1.562046505134292),(5,-2.5736250710412123),(3,-1.7969774284411608)]
+lrf = exponential r0 d
+s = makeSGM lrf maxSz absDifference adjustNum :: SGM Int Double Word16 Double
+s' = trainBatch s ps
+s = imprint s' 3 6.800770082296994
+
+
+
+prop_classify_chooses_best_fit: [Failed]
 *** Failed! (after 5 tests and 1 shrink):
 Exception:
   there aren't two models to merge

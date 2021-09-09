@@ -68,7 +68,7 @@ instance
 prop_DecayingGaussian_starts_at_r0
   :: DecayingGaussianParams Double -> Property
 prop_DecayingGaussian_starts_at_r0 (DecayingGaussianParams r0 rf w0 wf tf)
-  = property $ abs ((decayingGaussian r0 rf w0 wf tf 0 0) - r0) < 0.01
+  = property $ abs (decayingGaussian r0 rf w0 wf tf 0 0 - r0) < 0.01
 
 prop_DecayingGaussian_starts_at_w0
   :: DecayingGaussianParams Double -> Property
@@ -82,7 +82,7 @@ prop_DecayingGaussian_starts_at_w0 (DecayingGaussianParams r0 rf w0 wf tf)
 prop_DecayingGaussian_decays_to_rf
   :: DecayingGaussianParams Double -> Property
 prop_DecayingGaussian_decays_to_rf (DecayingGaussianParams r0 rf w0 wf tf)
-  = property $ abs ((decayingGaussian r0 rf w0 wf tf tf 0) - rf) < 0.01
+  = property $ abs (decayingGaussian r0 rf w0 wf tf tf 0 - rf) < 0.01
 
 prop_DecayingGaussian_shrinks_to_wf
   :: DecayingGaussianParams Double -> Property
@@ -125,8 +125,8 @@ instance Show SOMTestData where
 buildSOMTestData
   :: Int -> [Double] -> DecayingGaussianParams Double
      -> [Double] -> SOMTestData
-buildSOMTestData len ps p@(DecayingGaussianParams r0 rf w0 wf tf) targets =
-  SOMTestData s p targets
+buildSOMTestData len ps p@(DecayingGaussianParams r0 rf w0 wf tf) =
+  SOMTestData s p
     where g = hexHexGrid len
           gm = lazyGridMap g ps
           fr = decayingGaussian r0 rf w0 wf tf
@@ -287,8 +287,8 @@ instance Show IncompleteSOMTestData where
 buildIncompleteSOMTestData
   :: Int -> [Double] -> DecayingGaussianParams Double
      -> [Double] -> IncompleteSOMTestData
-buildIncompleteSOMTestData len ps p@(DecayingGaussianParams r0 rf w0 wf tf) targets =
-  IncompleteSOMTestData s p targets
+buildIncompleteSOMTestData len ps p@(DecayingGaussianParams r0 rf w0 wf tf) =
+  IncompleteSOMTestData s p
     where g = hexHexGrid len
           gm = lazyGridMap g ps
           fr = decayingGaussian r0 rf w0 wf tf

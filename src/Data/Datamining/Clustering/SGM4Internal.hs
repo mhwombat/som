@@ -24,7 +24,7 @@ module Data.Datamining.Clustering.SGM4Internal where
 import           Prelude         hiding (filter, lookup)
 
 import           Control.DeepSeq (NFData)
-import           Data.List       (foldl', minimumBy, sortBy, (\\))
+import           Data.List       (foldl', minimumBy, (\\))
 import qualified Data.Map.Strict as M
 import           Data.Ord        (comparing)
 -- import           Data.Ratio      ((%))
@@ -120,11 +120,11 @@ counterMap = M.map snd . toMap
 
 -- | Returns the model at a specified node.
 modelAt :: Ord k => SGM t x k p -> k -> p
-modelAt s k = (modelMap s) M.! k
+modelAt s k = modelMap s M.! k
 
 -- | Returns the match counter for a specified node.
 counterAt :: Ord k => SGM t x k p -> k -> t
-counterAt s k = (counterMap s) M.! k
+counterAt s k = counterMap s M.! k
 
 -- | Returns the current labels.
 labels :: SGM t x k p -> [k]
@@ -138,7 +138,7 @@ time = sum . map snd . M.elems . toMap
 addNode
   :: (Num t, Bounded k, Enum k, Ord k)
     => SGM t x k p -> p -> SGM t x k p
-addNode s p = addNodeAt s (nextIndex s) p
+addNode s = addNodeAt s (nextIndex s)
 
 addNodeAt
   :: (Num t, Bounded k, Enum k, Ord k)
@@ -172,7 +172,7 @@ trainNode
 trainNode s k target = s { toMap=gm' }
   where gm = toMap s
         gm' = M.adjust tweakModel k gm
-        r = (learningRate s) (time s)
+        r = learningRate s (time s)
         tweakModel (p, t) = (makeSimilar s target r p, t)
 
 hasLabel :: Ord k => SGM t x k p -> k -> Bool
@@ -250,7 +250,7 @@ consolidate s = (k3, s2)
 consolidateAndAdd
   :: (Num t, Ord t, Ord x, Bounded k, Enum k, Ord k)
   => SGM t x k p -> p -> SGM t x k p
-consolidateAndAdd s p = addNode s' p
+consolidateAndAdd s = addNode s'
   where (_, s') = consolidate s
 
 -- | Set the model for a node.
@@ -280,7 +280,7 @@ classify s p
   where report
           = M.map (\p0 -> (p0, difference s p p0)) . modelMap $ s
         (bmu, bmuDiff)
-          = head . sortBy matchOrder . map (\(k, (_, x)) -> (k, x))
+          = minimumBy matchOrder . map (\(k, (_, x)) -> (k, x))
               . M.toList $ report
 
 -- | Order models by ascending difference from the input pattern,

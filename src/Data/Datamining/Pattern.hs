@@ -101,11 +101,11 @@ adjustVectorPreserveLength ts r xs
 avpl :: (Num a, Ord a, Eq a) => [a] -> a -> [a] -> [a]
 avpl _ _ []          = []
 avpl [] _ x          = x
-avpl (t:ts) r (x:xs) = (adjustNum' r t x) : (avpl ts r xs)
+avpl (t:ts) r (x:xs) = adjustNum' r t x : avpl ts r xs
 
 -- | A vector that has been normalised, i.e., the magnitude of the
 --   vector = 1.
-data NormalisedVector a = NormalisedVector [a] deriving Show
+newtype NormalisedVector a = NormalisedVector [a] deriving Show
 
 -- | Normalises a vector
 normalise :: Floating a => [a] -> NormalisedVector a
@@ -121,7 +121,7 @@ norm xs = sqrt $ sum (map f xs)
 --   @'scaleAll'@. Alternatively, if you can identify a maximum and
 --   minimum value for each element in a vector, you can scale
 --   individual vectors using @'scale'@.
-data ScaledVector a = ScaledVector [a] deriving Show
+newtype ScaledVector a = ScaledVector [a] deriving Show
 
 -- | Given a vector @qs@ of pairs of numbers, where each pair represents
 --   the maximum and minimum value to be expected at each index in

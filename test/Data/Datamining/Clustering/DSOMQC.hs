@@ -100,7 +100,7 @@ newtype TestPattern = TestPattern {toDouble :: Double}
  deriving ( Eq, Ord, Show, Read)
 
 instance Arbitrary TestPattern where
-  arbitrary = fmap TestPattern $ choose (0,1)
+  arbitrary = TestPattern <$> choose (0,1)
   shrink (TestPattern x) =
     [ TestPattern x' | x' <- shrink x, x' >= 0, x' <= 1]
 
@@ -132,8 +132,8 @@ instance Show DSOMTestData where
 
 buildDSOMTestData
   :: Int -> [TestPattern] -> RougierArgs -> [TestPattern] -> DSOMTestData
-buildDSOMTestData len ps rp@(RougierArgs r p _ _ _) targets =
-  DSOMTestData s rp targets
+buildDSOMTestData len ps rp@(RougierArgs r p _ _ _) =
+  DSOMTestData s rp
     where g = hexHexGrid len
           gm = lazyGridMap g ps
           fr = rougierLearningFunction r p

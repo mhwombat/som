@@ -51,7 +51,7 @@ data DSOM gm x k p = DSOM
     --   In the context of a SOM, the tiles are called "nodes"
     gridMap      :: gm p,
     -- | A function which determines the how quickly the SOM learns.
-    learningRate :: (x -> x -> x -> x),
+    learningRate :: x -> x -> x -> x,
     -- | A function which compares two patterns and returns a
     --   /non-negative/ number representing how different the patterns
     --   are.
@@ -141,8 +141,8 @@ trainNeighbourhood s bmu target = s { gridMap=gm' }
         gm' = GM.mapWithKey (adjustNode gm fms fd fr target bmu) gm
         fms = makeSimilar s
         fd = difference s
-        fr = (learningRate s) bmuDiff
-        bmuDiff = (difference s) (gm GM.! bmu) target
+        fr = learningRate s bmuDiff
+        bmuDiff = difference s (gm GM.! bmu) target
 
 -- | Internal method.
 justTrain

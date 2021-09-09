@@ -1,5 +1,7 @@
 # Changelog for som
 
+10.1.12 Code de-linting..
+
 10.1.11 Simplified nix build config.
 
 10.1.10 Added SGM6.

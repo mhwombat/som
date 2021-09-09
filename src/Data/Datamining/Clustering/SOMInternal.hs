@@ -54,8 +54,8 @@ decayingGaussian r0 rf w0 wf tf t d = r * exp (-x/y)
   where a = t / tf
         r = r0 * ((rf/r0)**a)
         w = w0 * ((wf/w0)**a)
-        x =  (d*d)
-        y =  (2*w*w)
+        x = d*d
+        y = 2*w*w
 
 -- | A learning function that only updates the BMU and has a constant
 --   learning rate.
@@ -157,7 +157,7 @@ withGridMap f s = s { gridMap=gm' }
 -- | Returns the learning function currently being used by the SOM.
 currentLearningFunction :: (Num t) => SOM t d gm x k p -> (d -> x)
 currentLearningFunction s
-  = (learningRate s) (counter s)
+  = learningRate s (counter s)
 
 -- | Extracts the grid and current models from the SOM.
 --   A synonym for @'gridMap'@.

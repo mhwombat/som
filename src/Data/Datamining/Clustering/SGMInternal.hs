@@ -24,7 +24,7 @@ module Data.Datamining.Clustering.SGMInternal where
 import           Prelude         hiding (lookup)
 
 import           Control.DeepSeq (NFData)
-import           Data.List       (foldl', minimumBy, sortBy)
+import           Data.List       (foldl', minimumBy)
 import qualified Data.Map.Strict as M
 import           Data.Ord        (comparing)
 import           GHC.Generics    (Generic)
@@ -127,7 +127,7 @@ counterMap = M.map snd . toMap
 
 -- | Returns the model at a specified node.
 modelAt :: Ord k => SGM t x k p -> k -> p
-modelAt s k = (modelMap s) M.! k
+modelAt s k = modelMap s M.! k
 
 -- | Returns the current labels.
 labels :: SGM t x k p -> [k]
@@ -184,7 +184,7 @@ trainNode
 trainNode s k target = s { toMap=gm' }
   where gm = toMap s
         gm' = M.adjust tweakModel k gm
-        r = (learningRate s) (time s)
+        r = learningRate s (time s)
         tweakModel (p, t) = (makeSimilar s target r p, t)
 
 -- | Returns the node that has been the BMU least often.
@@ -241,7 +241,7 @@ classify' s p
   where report
           = M.map (\p0 -> (p0, difference s p p0)) . modelMap $ s
         (bmu, bmuDiff)
-          = head . sortBy matchOrder . map (\(k, (_, x)) -> (k, x))
+          = minimumBy matchOrder . map (\(k, (_, x)) -> (k, x))
               . M.toList $ report
         s' = incrementCounter bmu s
 

@@ -48,7 +48,7 @@ instance Functor UnitInterval where
 
 instance (Num a, Ord a, Random a, Arbitrary a)
     => Arbitrary (UnitInterval a) where
-  arbitrary = fmap UnitInterval $ choose (0,1)
+  arbitrary = UnitInterval <$> choose (0,1)
   shrink (UnitInterval x) =
     [ UnitInterval x' | x' <- shrink x, x' >= 0, x' <= 1]
 
@@ -109,7 +109,7 @@ prop_classify_chooses_best_fit (TestSGM s _) x
 
 prop_classify_never_creates_model :: TestSGM -> Double -> Property
 prop_classify_never_creates_model (TestSGM s _) x
-  = not (isEmpty s) ==> bmu `elem` (labels s)
+  = not (isEmpty s) ==> bmu `elem` labels s
   where (bmu, _, _) = classify s x
 
 prop_classify_never_causes_error_unless_som_empty

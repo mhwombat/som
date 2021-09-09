@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               som
-version:            10.1.11
+version:            10.1.12
 synopsis:           Self-Organising Maps
 description:
   Please see the README on GitHub at <https://github.com/mhwombat/som#readme>

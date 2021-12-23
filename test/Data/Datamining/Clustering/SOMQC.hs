@@ -29,10 +29,8 @@ import           Data.Datamining.Clustering.Classifier  (classify,
                                                          reportAndTrain, train,
                                                          trainBatch)
 import           Data.Datamining.Clustering.SOMInternal
-import           Data.Datamining.Pattern                (absDifference,
-                                                         adjustNum,
-                                                         euclideanDistanceSquared,
-                                                         magnitudeSquared)
+import qualified Data.Datamining.Pattern.List           as L
+import qualified Data.Datamining.Pattern.Numeric        as N
 
 import           Data.List                              (sort)
 import           Math.Geometry.Grid                     (size)
@@ -44,9 +42,9 @@ import           Test.Framework                         as TF (Test, testGroup)
 import           Test.Framework.Providers.QuickCheck2   (testProperty)
 import           Test.QuickCheck                        (Arbitrary, Gen,
                                                          Property, arbitrary,
-                                                         choose, property,
-                                                         sized, suchThat,
-                                                         vectorOf, (==>))
+                                                         choose, sized,
+                                                         suchThat, vectorOf,
+                                                         (==>))
 
 positive :: (Num a, Ord a, Arbitrary a) => Gen a
 positive = arbitrary `suchThat` (> 0)
@@ -66,39 +64,37 @@ instance
     return $ DecayingGaussianParams r0 rf w0 wf tf
 
 prop_DecayingGaussian_starts_at_r0
-  :: DecayingGaussianParams Double -> Property
+  :: DecayingGaussianParams Double -> Bool
 prop_DecayingGaussian_starts_at_r0 (DecayingGaussianParams r0 rf w0 wf tf)
-  = property $ abs (decayingGaussian r0 rf w0 wf tf 0 0 - r0) < 0.01
+  = abs (decayingGaussian r0 rf w0 wf tf 0 0 - r0) < 0.01
 
 prop_DecayingGaussian_starts_at_w0
-  :: DecayingGaussianParams Double -> Property
+  :: DecayingGaussianParams Double -> Bool
 prop_DecayingGaussian_starts_at_w0 (DecayingGaussianParams r0 rf w0 wf tf)
-  = property $
-    decayingGaussian r0 rf w0 wf tf 0 inside >= r0 * exp (-0.5)
+  = decayingGaussian r0 rf w0 wf tf 0 inside >= r0 * exp (-0.5)
       && decayingGaussian r0 rf w0 wf tf 0 outside < r0 * exp (-0.5)
   where inside = w0 * 0.99999
         outside = w0 * 1.00001
 
 prop_DecayingGaussian_decays_to_rf
-  :: DecayingGaussianParams Double -> Property
+  :: DecayingGaussianParams Double -> Bool
 prop_DecayingGaussian_decays_to_rf (DecayingGaussianParams r0 rf w0 wf tf)
-  = property $ abs (decayingGaussian r0 rf w0 wf tf tf 0 - rf) < 0.01
+  = abs (decayingGaussian r0 rf w0 wf tf tf 0 - rf) < 0.01
 
 prop_DecayingGaussian_shrinks_to_wf
-  :: DecayingGaussianParams Double -> Property
+  :: DecayingGaussianParams Double -> Bool
 prop_DecayingGaussian_shrinks_to_wf (DecayingGaussianParams r0 rf w0 wf tf)
-  = property $
-    decayingGaussian r0 rf w0 wf tf tf inside >= rf * exp (-0.5)
+  = decayingGaussian r0 rf w0 wf tf tf inside >= rf * exp (-0.5)
       && decayingGaussian r0 rf w0 wf tf tf outside < rf * exp (-0.5)
   where inside = wf * 0.99999
         outside = wf * 1.00001
 
 fractionDiff :: [Double] -> [Double] -> Double
 fractionDiff xs ys = if denom == 0 then 0 else d / denom
-  where d = sqrt $ euclideanDistanceSquared xs ys
+  where d = sqrt $ L.euclideanDistanceSquared xs ys
         denom = max xMag yMag
-        xMag = sqrt $ magnitudeSquared xs
-        yMag = sqrt $ magnitudeSquared ys
+        xMag = sqrt $ L.magnitudeSquared xs
+        yMag = sqrt $ L.magnitudeSquared ys
 
 approxEqual :: [Double] -> [Double] -> Bool
 approxEqual xs ys = fractionDiff xs ys <= 0.1
@@ -130,7 +126,7 @@ buildSOMTestData len ps p@(DecayingGaussianParams r0 rf w0 wf tf) =
     where g = hexHexGrid len
           gm = lazyGridMap g ps
           fr = decayingGaussian r0 rf w0 wf tf
-          s = SOM gm fr absDifference adjustNum 0
+          s = SOM gm fr N.absDifference N.makeSimilar 0
 
 sizedSOMTestData :: Int -> Gen SOMTestData
 sizedSOMTestData n = do
@@ -152,13 +148,13 @@ instance Arbitrary SOMTestData where
 -- | If we use a fixed learning rate of one (regardless of the distance
 --   from the BMU), and train a classifier once on one pattern, then all
 --   nodes should match the input vector.
-prop_global_instant_training_works :: SOMTestData -> Property
+prop_global_instant_training_works :: SOMTestData -> Bool
 prop_global_instant_training_works (SOMTestData s _ xs) =
-  property $ finalModels `approxEqual` expectedModels
+  finalModels `approxEqual` expectedModels
     where x = head xs
           gm = toGridMap s :: LGridMap HexHexGrid Double
           f _ _ = 1
-          s2 = SOM gm f absDifference adjustNum 0
+          s2 = SOM gm f N.absDifference N.makeSimilar 0
           s3 = train s2 x
           finalModels = models s3 :: [Double]
           expectedModels = replicate (numModels s) x :: [Double]
@@ -173,27 +169,27 @@ prop_training_reduces_error (SOMTestData s _ xs) = errBefore /= 0 ==>
 
 --   Invoking @diffAndTrain f s p@ should give identical results to
 --   @(p `classify` s, train s f p)@.
-prop_classifyAndTrainEquiv :: SOMTestData -> Property
-prop_classifyAndTrainEquiv (SOMTestData s _ ps) = property $
-  bmu == s `classify` p && gridMap s1 == gridMap s2
+prop_classifyAndTrainEquiv :: SOMTestData -> Bool
+prop_classifyAndTrainEquiv (SOMTestData s _ ps)
+  = bmu == s `classify` p && gridMap s1 == gridMap s2
     where p = head ps
           (bmu, s1) = classifyAndTrain s p
           s2 = train s p
 
 --   Invoking @diffAndTrain f s p@ should give identical results to
 --   @(s `diff` p, train s f p)@.
-prop_diffAndTrainEquiv :: SOMTestData -> Property
-prop_diffAndTrainEquiv (SOMTestData s _ ps) = property $
-  diffs == s `differences` p && gridMap s1 == gridMap s2
+prop_diffAndTrainEquiv :: SOMTestData -> Bool
+prop_diffAndTrainEquiv (SOMTestData s _ ps)
+  = diffs == s `differences` p && gridMap s1 == gridMap s2
     where p = head ps
           (diffs, s1) = diffAndTrain s p
           s2 = train s p
 
 --   Invoking @trainNeighbourhood s (classify s p) p@ should give
 --   identical results to @train s p@.
-prop_trainNeighbourhoodEquiv :: SOMTestData -> Property
-prop_trainNeighbourhoodEquiv (SOMTestData s _ ps) = property $
-  gridMap s1 == gridMap s2
+prop_trainNeighbourhoodEquiv :: SOMTestData -> Bool
+prop_trainNeighbourhoodEquiv (SOMTestData s _ ps)
+  = gridMap s1 == gridMap s2
     where p = head ps
           s1 = trainNeighbourhood s (classify s p) p
           s2 = train s p
@@ -201,9 +197,9 @@ prop_trainNeighbourhoodEquiv (SOMTestData s _ ps) = property $
 -- | The training set consists of the same vectors in the same order,
 --   several times over. So the resulting classifications should consist
 --   of the same integers in the same order, over and over.
-prop_batch_training_works :: SOMTestData -> Property
-prop_batch_training_works (SOMTestData s _ xs) = property $
-  classifications == (concat . replicate 5) firstSet
+prop_batch_training_works :: SOMTestData -> Bool
+prop_batch_training_works (SOMTestData s _ xs)
+  = classifications == (concat . replicate 5) firstSet
   where trainingSet = (concat . replicate 5) xs
         s' = trainBatch s trainingSet
         classifications = map (classify s') trainingSet
@@ -213,9 +209,9 @@ prop_batch_training_works (SOMTestData s _ xs) = property $
 --   value so that after training they become identical.
 --   This only happens rarely, so if the test fails, try again.
 prop_classification_is_consistent
-  :: SOMTestData -> Property
+  :: SOMTestData -> Bool
 prop_classification_is_consistent (SOMTestData s _ (x:_))
-  = property $ bmu == bmu'
+  = bmu == bmu'
   where (bmu, _, s') = reportAndTrain s x
         (bmu', _, _) = reportAndTrain s' x
 prop_classification_is_consistent _ = error "Should not happen"
@@ -243,7 +239,7 @@ buildSpecialSOMTestData len ps r targets =
   SpecialSOMTestData s r targets
     where g = hexHexGrid len
           gm = lazyGridMap g ps
-          s = SOM gm (stepFunction r) absDifference adjustNum 0
+          s = SOM gm (stepFunction r) N.absDifference N.makeSimilar 0
 
 sizedSpecialSOMTestData :: Int -> Gen SpecialSOMTestData
 sizedSpecialSOMTestData n = do
@@ -267,8 +263,8 @@ prop_batch_training_works2 :: SpecialSOMTestData -> Property
 prop_batch_training_works2 (SpecialSOMTestData s _ xs) =
   errBefore /= 0 ==> errAfter < errBefore
     where s' = trainBatch s xs
-          errBefore = euclideanDistanceSquared (sort xs) (sort (models s))
-          errAfter = euclideanDistanceSquared (sort xs) (sort (models s'))
+          errBefore = L.euclideanDistanceSquared (sort xs) (sort (models s))
+          errAfter = L.euclideanDistanceSquared (sort xs) (sort (models s'))
 
 data IncompleteSOMTestData
   = IncompleteSOMTestData
@@ -292,7 +288,7 @@ buildIncompleteSOMTestData len ps p@(DecayingGaussianParams r0 rf w0 wf tf) =
     where g = hexHexGrid len
           gm = lazyGridMap g ps
           fr = decayingGaussian r0 rf w0 wf tf
-          s = SOM gm fr absDifference adjustNum 0
+          s = SOM gm fr N.absDifference N.makeSimilar 0
 
 -- | Same as sizedSOMTestData, except some nodes don't have a value.
 sizedIncompleteSOMTestData :: Int -> Gen IncompleteSOMTestData

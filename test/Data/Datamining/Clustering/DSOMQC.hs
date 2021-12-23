@@ -29,10 +29,9 @@ import           Data.Datamining.Clustering.Classifier   (classify,
                                                           numModels, train,
                                                           trainBatch)
 import           Data.Datamining.Clustering.DSOMInternal
-import           Data.Datamining.Pattern                 (absDifference,
-                                                          adjustNum,
-                                                          euclideanDistanceSquared,
+import           Data.Datamining.Pattern.List            (euclideanDistanceSquared,
                                                           magnitudeSquared)
+import qualified Data.Datamining.Pattern.Numeric         as N
 
 #if MIN_VERSION_base(4,8,0)
 #else
@@ -49,8 +48,7 @@ import           Test.Framework                          as TF (Test, testGroup)
 import           Test.Framework.Providers.QuickCheck2    (testProperty)
 import           Test.QuickCheck                         (Arbitrary, Gen,
                                                           Property, arbitrary,
-                                                          choose, property,
-                                                          shrink, sized,
+                                                          choose, shrink, sized,
                                                           suchThat, vectorOf,
                                                           (==>))
 
@@ -64,22 +62,22 @@ instance Arbitrary RougierArgs where
   arbitrary = RougierArgs <$> choose (0,1) <*> choose (0,1)
                 <*> arbitrary <*> choose (0,1) <*> positive
 
-prop_rougierFunction_zero_if_perfect_model_exists :: RougierArgs -> Property
+prop_rougierFunction_zero_if_perfect_model_exists :: RougierArgs -> Bool
 prop_rougierFunction_zero_if_perfect_model_exists (RougierArgs r p _ diff dist) =
-  property $ rougierLearningFunction r p 0 diff dist == 0
+  rougierLearningFunction r p 0 diff dist == 0
 
-prop_rougierFunction_r_if_bmu_is_bad_model :: RougierArgs -> Property
+prop_rougierFunction_r_if_bmu_is_bad_model :: RougierArgs -> Bool
 prop_rougierFunction_r_if_bmu_is_bad_model (RougierArgs r p _ _ _) =
-  property $ rougierLearningFunction r p 1 1 0 == r
+  rougierLearningFunction r p 1 1 0 == r
 
-prop_rougierFunction_r_in_bounds :: RougierArgs -> Property
-prop_rougierFunction_r_in_bounds (RougierArgs r p bmuDiff diff dist) =
-  property $ 0 <= f && f <= 1
+prop_rougierFunction_r_in_bounds :: RougierArgs -> Bool
+prop_rougierFunction_r_in_bounds (RougierArgs r p bmuDiff diff dist)
+  = 0 <= f && f <= 1
   where f = rougierLearningFunction r p bmuDiff diff dist
 
-prop_rougierFunction_r_if_inelastic :: RougierArgs -> Property
+prop_rougierFunction_r_if_inelastic :: RougierArgs -> Bool
 prop_rougierFunction_r_if_inelastic (RougierArgs r _ _ _ _) =
-  property $ rougierLearningFunction r 1.0 1.0 1.0 0 == r
+  rougierLearningFunction r 1.0 1.0 1.0 0 == r
 
 fractionDiff :: [Double] -> [Double] -> Double
 fractionDiff xs ys = if denom == 0 then 0 else d / denom
@@ -105,11 +103,11 @@ instance Arbitrary TestPattern where
     [ TestPattern x' | x' <- shrink x, x' >= 0, x' <= 1]
 
 testPatternDiff :: TestPattern -> TestPattern -> Double
-testPatternDiff (TestPattern a) (TestPattern b) = absDifference a b
+testPatternDiff (TestPattern a) (TestPattern b) = N.absDifference a b
 
 adjustTestPattern :: TestPattern -> Double -> TestPattern -> TestPattern
 adjustTestPattern (TestPattern target) r (TestPattern x)
-  = TestPattern $ adjustNum target r x
+  = TestPattern $ N.makeSimilar target r x
 
 -- | A classifier and a training set. The training set will consist of
 --   @j@ vectors of equal length, where @j@ is the number of patterns
@@ -160,9 +158,9 @@ instance Arbitrary DSOMTestData where
 -- | If we use a fixed learning rate of one (regardless of the distance
 --   from the BMU), and train a classifier once on one pattern, then all
 --   nodes should match the input vector.
-prop_global_instant_training_works :: DSOMTestData -> Property
+prop_global_instant_training_works :: DSOMTestData -> Bool
 prop_global_instant_training_works (DSOMTestData s _ xs) =
-  property $ finalModels `approxEqual` expectedModels
+  finalModels `approxEqual` expectedModels
     where x = head xs
           gm = toGridMap s :: LGridMap HexHexGrid TestPattern
           f _ _ _ = 1
@@ -181,27 +179,27 @@ prop_training_works (DSOMTestData s _ xs) = errBefore /= 0 ==>
 
 --   Invoking @diffAndTrain f s p@ should give identical results to
 --   @(p `classify` s, train s f p)@.
-prop_classifyAndTrainEquiv :: DSOMTestData -> Property
-prop_classifyAndTrainEquiv (DSOMTestData s _ ps) = property $
-  bmu == s `classify` p && gridMap s1 == gridMap s2
+prop_classifyAndTrainEquiv :: DSOMTestData -> Bool
+prop_classifyAndTrainEquiv (DSOMTestData s _ ps)
+  = bmu == s `classify` p && gridMap s1 == gridMap s2
     where p = head ps
           (bmu, s1) = classifyAndTrain s p
           s2 = train s p
 
 --   Invoking @diffAndTrain f s p@ should give identical results to
 --   @(s `diff` p, train s f p)@.
-prop_diffAndTrainEquiv :: DSOMTestData -> Property
-prop_diffAndTrainEquiv (DSOMTestData s _ ps) = property $
-  diffs == s `differences` p && gridMap s1 == gridMap s2
+prop_diffAndTrainEquiv :: DSOMTestData -> Bool
+prop_diffAndTrainEquiv (DSOMTestData s _ ps)
+  = diffs == s `differences` p && gridMap s1 == gridMap s2
     where p = head ps
           (diffs, s1) = diffAndTrain s p
           s2 = train s p
 
 --   Invoking @trainNeighbourhood s (classify s p) p@ should give
 --   identical results to @train s p@.
-prop_trainNeighbourhoodEquiv :: DSOMTestData -> Property
-prop_trainNeighbourhoodEquiv (DSOMTestData s _ ps) = property $
-  gridMap s1 == gridMap s2
+prop_trainNeighbourhoodEquiv :: DSOMTestData -> Bool
+prop_trainNeighbourhoodEquiv (DSOMTestData s _ ps)
+  = gridMap s1 == gridMap s2
     where p = head ps
           s1 = trainNeighbourhood s (classify s p) p
           s2 = train s p
@@ -209,9 +207,9 @@ prop_trainNeighbourhoodEquiv (DSOMTestData s _ ps) = property $
 -- | The training set consists of the same vectors in the same order,
 --   several times over. So the resulting classifications should consist
 --   of the same integers in the same order, over and over.
-prop_batch_training_works :: DSOMTestData -> Property
-prop_batch_training_works (DSOMTestData s _ xs) = property $
-  classifications == (concat . replicate 5) firstSet
+prop_batch_training_works :: DSOMTestData -> Bool
+prop_batch_training_works (DSOMTestData s _ xs)
+  = classifications == (concat . replicate 5) firstSet
   where trainingSet = (concat . replicate 5) xs
         s' = trainBatch s trainingSet
         classifications = map (classify s') trainingSet

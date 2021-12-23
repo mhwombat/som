@@ -23,8 +23,7 @@ module Data.Datamining.Clustering.SGM4QC
 
 import           Control.DeepSeq                         (deepseq)
 import           Data.Datamining.Clustering.SGM4Internal
-import           Data.Datamining.Pattern
-    (absDifference, adjustNum)
+import qualified Data.Datamining.Pattern.Numeric         as N
 import           Data.List                               (minimumBy)
 import qualified Data.Map.Strict                         as M
 import           Data.Ord                                (comparing)
@@ -32,9 +31,12 @@ import           Data.Word                               (Word16)
 import           System.Random                           (Random)
 import           Test.Framework                          as TF (Test, testGroup)
 import           Test.Framework.Providers.QuickCheck2    (testProperty)
-import           Test.QuickCheck
-    (Arbitrary, Gen, Positive, Property, arbitrary, choose, getPositive,
-    property, shrink, sized, suchThat, vectorOf, (==>))
+import           Test.QuickCheck                         (Arbitrary, Gen,
+                                                          Positive, Property,
+                                                          arbitrary, choose,
+                                                          getPositive, shrink,
+                                                          sized, suchThat,
+                                                          vectorOf, (==>))
 
 newtype UnitInterval a = UnitInterval {getUnitInterval :: a}
  deriving ( Eq, Ord, Show, Read)
@@ -49,15 +51,15 @@ instance (Num a, Ord a, Random a, Arbitrary a)
     [ UnitInterval x' | x' <- shrink x, x' >= 0, x' <= 1]
 
 prop_Exponential_starts_at_r0
-  :: UnitInterval Double -> Positive Double -> Property
+  :: UnitInterval Double -> Positive Double -> Bool
 prop_Exponential_starts_at_r0 r0 d
-  = property $ abs (exponential r0' d' 0 - r0') < 0.01
+  = abs (exponential r0' d' 0 - r0') < 0.01
   where r0' = getUnitInterval r0
         d' = getPositive d
 
 prop_Exponential_ge_0
-  :: UnitInterval Double -> Positive Double -> Positive Int -> Property
-prop_Exponential_ge_0 r0 d t = property $ exponential r0' d' t' >= 0
+  :: UnitInterval Double -> Positive Double -> Positive Int -> Bool
+prop_Exponential_ge_0 r0 d t = exponential r0' d' t' >= 0
   where r0' = getUnitInterval r0
         d' = getPositive d
         t' = getPositive t
@@ -74,7 +76,7 @@ buildTestSGM
   :: Double -> Double -> Int -> [Double] -> [(Word16, Double)] -> TestSGM
 buildTestSGM r0 d maxSz ps kps = TestSGM s'' desc
   where lrf = exponential r0 d
-        s = makeSGM lrf maxSz absDifference adjustNum
+        s = makeSGM lrf maxSz N.absDifference N.makeSimilar
         desc = "buildTestSGM " ++ show r0 ++ " " ++ show d
                  ++ " " ++ show maxSz
                  ++ " " ++ show ps
@@ -98,14 +100,13 @@ instance Arbitrary TestSGM where
 
 prop_classify_chooses_best_fit :: TestSGM -> Double -> Property
 prop_classify_chooses_best_fit (TestSGM s _) x
-  = not (isEmpty s) ==> property $ bmu == bmu2
+  = not (isEmpty s) ==> bmu == bmu2
   where (bmu, _, report) = classify s x
         bmu2 = fst (minimumBy (comparing f) . M.toList $ report)
         f (_, (_, d)) = d
 
-prop_trainAndClassify_chooses_best_fit :: TestSGM -> Double -> Property
-prop_trainAndClassify_chooses_best_fit (TestSGM s _) x
-  = property $ bmu == bmu2
+prop_trainAndClassify_chooses_best_fit :: TestSGM -> Double -> Bool
+prop_trainAndClassify_chooses_best_fit (TestSGM s _) x = bmu == bmu2
   where (bmu, _, report, _) = trainAndClassify s x
         bmu2 = fst (minimumBy (comparing f) . M.toList $ report)
         f (_, (_, d)) = d
@@ -118,7 +119,7 @@ prop_classify_never_creates_model (TestSGM s _) x
 prop_classify_never_causes_error_unless_som_empty
   :: TestSGM -> Double -> Property
 prop_classify_never_causes_error_unless_som_empty (TestSGM s _) p
-  = not (isEmpty s) ==> property $ deepseq (classify s p) True
+  = not (isEmpty s) ==> deepseq (classify s p) True
 
 prop_trainNode_reduces_diff :: TestSGM -> Double -> Property
 prop_trainNode_reduces_diff (TestSGM s _) x = not (isEmpty s) ==>
@@ -142,9 +143,9 @@ prop_addNode_never_causes_error :: TestSGM -> Double -> Property
 prop_addNode_never_causes_error (TestSGM s _) p
   = size s < capacity s ==> deepseq (addNode s p) True
 
-prop_train_never_causes_error :: TestSGM -> Double -> Property
+prop_train_never_causes_error :: TestSGM -> Double -> Bool
 prop_train_never_causes_error (TestSGM s _) p
-  = property $ deepseq (train s p) True
+  = deepseq (train s p) True
 
 prop_train_only_modifies_one_model
   :: TestSGM -> Double -> Property
@@ -166,11 +167,11 @@ prop_train_increments_counter (TestSGM s _) x
 -- | The training set consists of the same vectors in the same order,
 --   several times over. So the resulting classifications should consist
 --   of the same integers in the same order, over and over.
-prop_batch_training_works :: TestSGM -> [Double] -> Property
+prop_batch_training_works :: TestSGM -> [Double] -> Bool
 prop_batch_training_works (TestSGM s _) ps
   -- = capacity s > length ps
   --   ==> classifications == (concat . replicate 5) firstSet
-  = property $ classifications == (concat . replicate n) firstSet
+  = classifications == (concat . replicate n) firstSet
   where trainingSet = (concat . replicate n) ps
         n = 4
         sRightSize = if capacity s >= length ps
@@ -183,9 +184,8 @@ prop_batch_training_works (TestSGM s _) ps
 
 -- | WARNING: This can fail when two nodes are close enough in
 --   value so that after training they become identical.
-prop_classification_is_consistent :: TestSGM -> Double -> Property
-prop_classification_is_consistent (TestSGM s _) x
-  = property $ bmu == bmu'
+prop_classification_is_consistent :: TestSGM -> Double -> Bool
+prop_classification_is_consistent (TestSGM s _) x = bmu == bmu'
   where (bmu, _, _, s2) = trainAndClassify s x
         (bmu', _, _) = classify s2 x
 
@@ -197,9 +197,9 @@ prop_classification_stabilises (TestSGM s _)  ps
         sStable3 = trainBatch sStable2 ps
         (k2, _, _) = classify sStable3 (head ps)
 
-prop_imprint_never_causes_error :: TestSGM -> Word16 -> Double -> Property
+prop_imprint_never_causes_error :: TestSGM -> Word16 -> Double -> Bool
 prop_imprint_never_causes_error (TestSGM s _) k p
-  = property $ deepseq (imprint s k p) True
+  = deepseq (imprint s k p) True
 
 
 test :: Test

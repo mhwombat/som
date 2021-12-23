@@ -1,5 +1,7 @@
 # Changelog for som
 
+11.0    Revamped Data.Datamining.Pattern
+
 10.1.12 Code de-linting..
 
 10.1.11 Simplified nix build config.

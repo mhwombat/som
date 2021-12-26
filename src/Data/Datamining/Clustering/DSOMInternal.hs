@@ -16,6 +16,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
@@ -68,6 +69,14 @@ data DSOM gm x k p = DSOM
     --   If @amount@=0, the result should be the unmodified @pattern@.
     makeSimilar  :: p -> x -> p -> p
   } deriving (Generic, NFData)
+
+deriving instance
+  (Show (gm p), Show (x -> x -> x -> x), Show (p -> p -> x), Show (p -> x -> p -> p))
+    => Show (DSOM gm x k p)
+
+deriving instance
+  (Read (gm p), Read (x -> x -> x -> x), Read (p -> p -> x), Read (p -> x -> p -> p))
+    => Read (DSOM gm x k p)
 
 instance (F.Foldable gm) => F.Foldable (DSOM gm x k) where
   foldr f x g = F.foldr f x (gridMap g)

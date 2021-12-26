@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               som
-version:            11.0
+version:            11.0.1
 synopsis:           Self-Organising Maps
 description:
   Please see the README on GitHub at <https://github.com/mhwombat/som#readme>
@@ -45,7 +45,7 @@ library
     , base        >=4.7    && <5
     , containers  >= 0.6.5 && < 0.7
     , deepseq     >= 1.4.4 && < 1.5
-    , grid        >= 7.8.16 && < 7.9
+    , grid
 
 test-suite som-test
   import:         common-stuff

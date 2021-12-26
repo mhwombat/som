@@ -40,8 +40,7 @@ import           Control.Applicative
 
 import           Data.List                               (sort)
 import           Math.Geometry.Grid                      (size)
-import           Math.Geometry.Grid.Hexagonal            (HexHexGrid,
-                                                          hexHexGrid)
+import           Math.Geometry.Grid.Hexagonal            (HexHexGrid (..))
 import           Math.Geometry.GridMap                   (elems, (!))
 import           Math.Geometry.GridMap.Lazy              (LGridMap, lazyGridMap)
 import           Test.Framework                          as TF (Test, testGroup)
@@ -132,7 +131,7 @@ buildDSOMTestData
   :: Int -> [TestPattern] -> RougierArgs -> [TestPattern] -> DSOMTestData
 buildDSOMTestData len ps rp@(RougierArgs r p _ _ _) =
   DSOMTestData s rp
-    where g = hexHexGrid len
+    where g = HexHexGrid len
           gm = lazyGridMap g ps
           fr = rougierLearningFunction r p
           s = DSOM gm fr testPatternDiff adjustTestPattern
@@ -236,7 +235,7 @@ buildSpecialDSOMTestData
   :: Int -> [TestPattern] -> Double -> [TestPattern] -> SpecialDSOMTestData
 buildSpecialDSOMTestData len ps r targets =
   SpecialDSOMTestData s r targets
-    where g = hexHexGrid len
+    where g = HexHexGrid len
           gm = lazyGridMap g ps
           fr = stepFunction r
           s = DSOM gm fr testPatternDiff adjustTestPattern

@@ -16,6 +16,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
@@ -86,6 +87,15 @@ data SGM t x k p = SGM
     -- | Index for the next node to add to the SGM.
     nextIndex     :: k
   } deriving (Generic, NFData)
+
+deriving instance
+  (Show t, Show x, Show k, Show p, Show (t -> x), Show (p -> p -> x), Show (p -> x -> p -> p))
+    => Show (SGM t x k p)
+
+deriving instance
+  (Read t, Read x, Read k, Read p, Ord k, Read (t -> x), Read (p -> p -> x), Read (p -> x -> p -> p))
+    => Read (SGM t x k p)
+
 
 -- | @'makeSGM' lr n dt diff ms@ creates a new SGM that does not (yet)
 --   contain any models.

@@ -34,7 +34,7 @@ import qualified Data.Datamining.Pattern.Numeric        as N
 
 import           Data.List                              (sort)
 import           Math.Geometry.Grid                     (size)
-import           Math.Geometry.Grid.Hexagonal           (HexHexGrid, hexHexGrid)
+import           Math.Geometry.Grid.Hexagonal           (HexHexGrid (..))
 import           Math.Geometry.GridMap                  (elems, (!))
 import           Math.Geometry.GridMap.Lazy             (LGridMap, lazyGridMap)
 import           System.Random                          (Random)
@@ -123,7 +123,7 @@ buildSOMTestData
      -> [Double] -> SOMTestData
 buildSOMTestData len ps p@(DecayingGaussianParams r0 rf w0 wf tf) =
   SOMTestData s p
-    where g = hexHexGrid len
+    where g = HexHexGrid len
           gm = lazyGridMap g ps
           fr = decayingGaussian r0 rf w0 wf tf
           s = SOM gm fr N.absDifference N.makeSimilar 0
@@ -237,7 +237,7 @@ buildSpecialSOMTestData
   :: Int -> [Double] -> Double -> [Double] -> SpecialSOMTestData
 buildSpecialSOMTestData len ps r targets =
   SpecialSOMTestData s r targets
-    where g = hexHexGrid len
+    where g = HexHexGrid len
           gm = lazyGridMap g ps
           s = SOM gm (stepFunction r) N.absDifference N.makeSimilar 0
 
@@ -285,7 +285,7 @@ buildIncompleteSOMTestData
      -> [Double] -> IncompleteSOMTestData
 buildIncompleteSOMTestData len ps p@(DecayingGaussianParams r0 rf w0 wf tf) =
   IncompleteSOMTestData s p
-    where g = hexHexGrid len
+    where g = HexHexGrid len
           gm = lazyGridMap g ps
           fr = decayingGaussian r0 rf w0 wf tf
           s = SOM gm fr N.absDifference N.makeSimilar 0

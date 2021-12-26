@@ -16,6 +16,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE StandaloneDeriving    #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
@@ -119,6 +120,14 @@ data SOM t d gm x k p = SOM
     --   of patterns that this SOM has classified.
     counter      :: t
   } deriving (Generic, NFData)
+
+deriving instance
+  (Show t, Show (gm p), Show (t -> d -> x), Show (p -> p -> x), Show (p -> x -> p -> p))
+    => Show (SOM t d gm x k p)
+
+deriving instance
+  (Read t, Read (gm p), Read (t -> d -> x), Read (p -> p -> x), Read (p -> x -> p -> p))
+    => Read (SOM t d gm x k p)
 
 instance (F.Foldable gm) => F.Foldable (SOM t d gm x k) where
   foldr f x g = F.foldr f x (gridMap g)

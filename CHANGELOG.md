@@ -1,5 +1,7 @@
 # Changelog for som
 
+11.0.1  Added Show and Read instances for SOM and SOM-like types.
+
 11.0    Revamped Data.Datamining.Pattern
 
 10.1.12 Code de-linting..

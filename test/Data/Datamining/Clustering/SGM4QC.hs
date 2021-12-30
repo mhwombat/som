@@ -25,7 +25,8 @@ module Data.Datamining.Clustering.SGM4QC
 
 import           Control.DeepSeq                         (NFData, deepseq)
 import           Data.Datamining.Clustering.SGM4Internal
-import qualified Data.Datamining.Pattern.Numeric         as N
+import           Data.Datamining.Pattern.Numeric         (absDifference)
+import           Data.Datamining.Pattern.TestUtils       (makeOrdFractionalSimilar)
 import           Data.List                               (minimumBy)
 import qualified Data.Map.Strict                         as M
 import           Data.Ord                                (comparing)
@@ -78,8 +79,8 @@ instance Adjuster TestAdjuster where
   type MetricType TestAdjuster = Double
   type PatternType TestAdjuster = Double
   learningRate (TestAdjuster r0 d) = exponential r0 d
-  difference _ = N.absDifference
-  makeSimilar _ = N.makeOrdFractionalSimilar
+  difference _ = absDifference
+  makeSimilar _ = makeOrdFractionalSimilar
 
 data TestSGM = TestSGM (SGM TestAdjuster Int Word16 Double)
   deriving (Eq, Read, Show)

@@ -30,8 +30,8 @@ import           Data.Datamining.Clustering.Classifier  (classify,
                                                          trainBatch)
 import           Data.Datamining.Clustering.SOMInternal
 import qualified Data.Datamining.Pattern.List           as L
-import qualified Data.Datamining.Pattern.Numeric        as N
-
+import           Data.Datamining.Pattern.Numeric        (absDifference)
+import           Data.Datamining.Pattern.TestUtils      (makeOrdFractionalSimilar)
 import           Data.List                              (sort)
 import           Math.Geometry.Grid                     (size)
 import           Math.Geometry.Grid.Hexagonal           (HexHexGrid (..))
@@ -126,7 +126,7 @@ buildSOMTestData len ps p@(DecayingGaussianParams r0 rf w0 wf tf) =
     where g = HexHexGrid len
           gm = lazyGridMap g ps
           fr = decayingGaussian r0 rf w0 wf tf
-          s = SOM gm fr N.absDifference N.makeOrdFractionalSimilar 0
+          s = SOM gm fr absDifference makeOrdFractionalSimilar 0
 
 sizedSOMTestData :: Int -> Gen SOMTestData
 sizedSOMTestData n = do
@@ -154,7 +154,7 @@ prop_global_instant_training_works (SOMTestData s _ xs) =
     where x = head xs
           gm = toGridMap s :: LGridMap HexHexGrid Double
           f _ _ = 1
-          s2 = SOM gm f N.absDifference N.makeOrdFractionalSimilar 0
+          s2 = SOM gm f absDifference makeOrdFractionalSimilar 0
           s3 = train s2 x
           finalModels = models s3 :: [Double]
           expectedModels = replicate (numModels s) x :: [Double]
@@ -239,7 +239,7 @@ buildSpecialSOMTestData len ps r targets =
   SpecialSOMTestData s r targets
     where g = HexHexGrid len
           gm = lazyGridMap g ps
-          s = SOM gm (stepFunction r) N.absDifference N.makeOrdFractionalSimilar 0
+          s = SOM gm (stepFunction r) absDifference makeOrdFractionalSimilar 0
 
 sizedSpecialSOMTestData :: Int -> Gen SpecialSOMTestData
 sizedSpecialSOMTestData n = do
@@ -288,7 +288,7 @@ buildIncompleteSOMTestData len ps p@(DecayingGaussianParams r0 rf w0 wf tf) =
     where g = HexHexGrid len
           gm = lazyGridMap g ps
           fr = decayingGaussian r0 rf w0 wf tf
-          s = SOM gm fr N.absDifference N.makeOrdFractionalSimilar 0
+          s = SOM gm fr absDifference makeOrdFractionalSimilar 0
 
 -- | Same as sizedSOMTestData, except some nodes don't have a value.
 sizedIncompleteSOMTestData :: Int -> Gen IncompleteSOMTestData

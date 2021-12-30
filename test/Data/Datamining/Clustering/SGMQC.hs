@@ -23,7 +23,8 @@ module Data.Datamining.Clustering.SGMQC
 
 import           Control.DeepSeq                        (deepseq)
 import           Data.Datamining.Clustering.SGMInternal
-import qualified Data.Datamining.Pattern.Numeric        as N
+import           Data.Datamining.Pattern.Numeric        (absDifference)
+import           Data.Datamining.Pattern.TestUtils      (makeOrdFractionalSimilar)
 import           Data.List                              (minimumBy, (\\))
 import qualified Data.Map.Strict                        as M
 import           Data.Ord                               (comparing)
@@ -76,7 +77,7 @@ buildTestSGM
   :: Double -> Double -> Int -> Double -> Bool -> [Double] -> TestSGM
 buildTestSGM r0 d maxSz dt ad ps = TestSGM s' desc
   where lrf = exponential r0 d
-        s = makeSGM lrf maxSz dt ad N.absDifference N.makeOrdFractionalSimilar
+        s = makeSGM lrf maxSz dt ad absDifference makeOrdFractionalSimilar
         desc = "buildTestSGM " ++ show r0 ++ " " ++ show d
                  ++ " " ++ show maxSz
                  ++ " " ++ show dt

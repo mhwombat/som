@@ -36,16 +36,18 @@ library
     Data.Datamining.Clustering.SGMInternal
     Data.Datamining.Clustering.SOM
     Data.Datamining.Clustering.SOMInternal
+    Data.Datamining.Pattern
     Data.Datamining.Pattern.Numeric
     Data.Datamining.Pattern.List
   other-modules:   Paths_som
   autogen-modules: Paths_som
   ghc-options:     -Wall -Wunused-packages
   build-depends:
-    , base        >=4.7    && <5
+    , base        >=4.8    && <5
     , containers  >= 0.6.5 && < 0.7
     , deepseq     >= 1.4.4 && < 1.5
     , grid
+    , QuickCheck
 
 test-suite som-test
   import:         common-stuff
@@ -59,6 +61,7 @@ test-suite som-test
     Data.Datamining.Clustering.SOMQC
     Data.Datamining.Pattern.NumericQC
     Data.Datamining.Pattern.ListQC
+    Data.Datamining.Pattern.TestUtils
   ghc-options:
     -threaded -rtsopts -with-rtsopts=-N -Wall -Wunused-packages
   build-depends:

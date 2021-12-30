@@ -10,7 +10,6 @@
 -- Tests
 --
 ------------------------------------------------------------------------
-{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -31,13 +30,8 @@ import           Data.Datamining.Clustering.Classifier   (classify,
 import           Data.Datamining.Clustering.DSOMInternal
 import           Data.Datamining.Pattern.List            (euclideanDistanceSquared,
                                                           magnitudeSquared)
-import qualified Data.Datamining.Pattern.Numeric         as N
-
-#if MIN_VERSION_base(4,8,0)
-#else
-import           Control.Applicative
-#endif
-
+import           Data.Datamining.Pattern.Numeric         (absDifference)
+import           Data.Datamining.Pattern.TestUtils       (makeOrdFractionalSimilar)
 import           Data.List                               (sort)
 import           Math.Geometry.Grid                      (size)
 import           Math.Geometry.Grid.Hexagonal            (HexHexGrid (..))
@@ -102,11 +96,11 @@ instance Arbitrary TestPattern where
     [ TestPattern x' | x' <- shrink x, x' >= 0, x' <= 1]
 
 testPatternDiff :: TestPattern -> TestPattern -> Double
-testPatternDiff (TestPattern a) (TestPattern b) = N.absDifference a b
+testPatternDiff (TestPattern a) (TestPattern b) = absDifference a b
 
 adjustTestPattern :: TestPattern -> Double -> TestPattern -> TestPattern
 adjustTestPattern (TestPattern target) r (TestPattern x)
-  = TestPattern $ N.makeOrdFractionalSimilar target r x
+  = TestPattern $ makeOrdFractionalSimilar target r x
 
 -- | A classifier and a training set. The training set will consist of
 --   @j@ vectors of equal length, where @j@ is the number of patterns

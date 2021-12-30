@@ -54,11 +54,11 @@ instance Arbitrary TestData where
   arbitrary = sized sizedTestData
 
 prop_diff_can_be_0 :: [Double] -> Bool
-prop_diff_can_be_0 xs = L.diff N.diff xs xs == 0
+prop_diff_can_be_0 xs = L.diff N.realFloatDiff xs xs == 0
 
 prop_weightedDiff_can_be_0 :: TestData -> Bool
 prop_weightedDiff_can_be_0 (TestData ws xs _)
-  = L.weightedDiff ws N.diff xs xs == 0
+  = L.weightedDiff ws N.realFloatDiff xs xs == 0
 
 arbitraryMaximallyDifferentPair :: Gen (Double, Double)
 arbitraryMaximallyDifferentPair = do
@@ -83,55 +83,55 @@ instance Arbitrary MaximallyDifferentTestData where
 
 prop_diff_can_be_1 :: MaximallyDifferentTestData -> Bool
 prop_diff_can_be_1 (MDTestData _ xs ys)
-  = Q.within 20 (L.diff N.diff xs ys) 1
+  = Q.within 20 (L.diff N.realFloatDiff xs ys) 1
 
 prop_weightedDiff_can_be_1 :: MaximallyDifferentTestData -> Bool
 prop_weightedDiff_can_be_1 (MDTestData ws xs ys)
-  = Q.within 20 (L.weightedDiff ws N.diff xs ys) 1
+  = Q.within 20 (L.weightedDiff ws N.realFloatDiff xs ys) 1
 
 prop_diff_btw_0_and_1 :: [Double] -> [Double] -> Bool
 prop_diff_btw_0_and_1 xs ys = 0 <= z && z <= 1
-  where z = L.diff N.diff xs ys
+  where z = L.diff N.realFloatDiff xs ys
 
 prop_weightedDiff_btw_0_and_1 :: TestWeights -> [Double] -> [Double] -> Bool
 prop_weightedDiff_btw_0_and_1 (TestWeights ws) xs ys = 0 <= z && z <= 1
-  where z = L.weightedDiff ws N.diff xs ys
+  where z = L.weightedDiff ws N.realFloatDiff xs ys
 
 prop_diff_symmetric :: [Double] -> [Double] -> Bool
-prop_diff_symmetric xs ys = L.diff N.diff xs ys == L.diff N.diff ys xs
+prop_diff_symmetric xs ys = L.diff N.realFloatDiff xs ys == L.diff N.realFloatDiff ys xs
 
 prop_weightedDiff_symmetric :: TestWeights -> [Double] -> [Double] -> Bool
 prop_weightedDiff_symmetric (TestWeights ws) xs ys
-  = L.weightedDiff ws N.diff xs ys == L.weightedDiff ws N.diff ys xs
+  = L.weightedDiff ws N.realFloatDiff xs ys == L.weightedDiff ws N.realFloatDiff ys xs
 
 prop_zero_adjustment_is_no_adjustment :: TestData -> Bool
 prop_zero_adjustment_is_no_adjustment (TestData _ xs ys)
-  = L.makeSimilar N.makeSimilar xs 0 ys == ys
+  = L.makeSimilar N.makeOrdFractionalSimilar xs 0 ys == ys
 
 prop_full_adjustment_gives_perfect_match :: TestData -> Bool
 prop_full_adjustment_gives_perfect_match (TestData _ xs ys)
   = Q.within 20 d 0
-  where ys' = L.makeSimilar N.makeSimilar xs 1 ys
-        d = L.diff N.diff xs ys'
+  where ys' = L.makeSimilar N.makeOrdFractionalSimilar xs 1 ys
+        d = L.diff N.realFloatDiff xs ys'
 
 prop_makeSimilar_improves_similarity
   :: TestData -> UnitInterval -> Property
 prop_makeSimilar_improves_similarity
   (TestData _ xs ys) (FromDouble r) =
     xs /= ys ==> d2 < d1
-      where d1 = L.diff N.diff xs ys
-            d2 = L.diff N.diff xs ys'
-            ys' = L.makeSimilar N.makeSimilar xs r ys
+      where d1 = L.diff N.realFloatDiff xs ys
+            d2 = L.diff N.realFloatDiff xs ys'
+            ys' = L.makeSimilar N.makeOrdFractionalSimilar xs r ys
 
 prop_makeSimilar_doesnt_choke_on_infinite_first_list ::
   [Double] -> UnitInterval -> Bool
 prop_makeSimilar_doesnt_choke_on_infinite_first_list xs (FromDouble d)
-  = length (L.makeSimilar N.makeSimilar xs d [0,1..]) == length xs
+  = length (L.makeSimilar N.makeOrdFractionalSimilar xs d [0,1..]) == length xs
 
 prop_makeSimilar_doesnt_choke_on_infinite_second_list ::
   [Double] -> UnitInterval -> Bool
 prop_makeSimilar_doesnt_choke_on_infinite_second_list xs (FromDouble d)
-  = length (L.makeSimilar N.makeSimilar [0,1..] d xs) == length xs
+  = length (L.makeSimilar N.makeOrdFractionalSimilar [0,1..] d xs) == length xs
 
 test :: Test
 test = testGroup "Data.Datamining.Pattern.ListQC"

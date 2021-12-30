@@ -106,7 +106,7 @@ testPatternDiff (TestPattern a) (TestPattern b) = N.absDifference a b
 
 adjustTestPattern :: TestPattern -> Double -> TestPattern -> TestPattern
 adjustTestPattern (TestPattern target) r (TestPattern x)
-  = TestPattern $ N.makeSimilar target r x
+  = TestPattern $ N.makeOrdFractionalSimilar target r x
 
 -- | A classifier and a training set. The training set will consist of
 --   @j@ vectors of equal length, where @j@ is the number of patterns

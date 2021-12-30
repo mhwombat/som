@@ -79,7 +79,7 @@ instance Adjuster TestAdjuster where
   type PatternType TestAdjuster = Double
   learningRate (TestAdjuster r0 d) = exponential r0 d
   difference _ = N.absDifference
-  makeSimilar _ = N.makeSimilar
+  makeSimilar _ = N.makeOrdFractionalSimilar
 
 data TestSGM = TestSGM (SGM TestAdjuster Int Word16 Double)
   deriving (Eq, Read, Show)

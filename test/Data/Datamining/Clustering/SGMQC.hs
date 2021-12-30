@@ -76,7 +76,7 @@ buildTestSGM
   :: Double -> Double -> Int -> Double -> Bool -> [Double] -> TestSGM
 buildTestSGM r0 d maxSz dt ad ps = TestSGM s' desc
   where lrf = exponential r0 d
-        s = makeSGM lrf maxSz dt ad N.absDifference N.makeSimilar
+        s = makeSGM lrf maxSz dt ad N.absDifference N.makeOrdFractionalSimilar
         desc = "buildTestSGM " ++ show r0 ++ " " ++ show d
                  ++ " " ++ show maxSz
                  ++ " " ++ show dt

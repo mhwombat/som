@@ -68,6 +68,7 @@ test-suite som-test
     , grid
     , numeric-tools
     , QuickCheck
+    , quickcheck-with-counterexamples
     , random
     , som
     , test-framework

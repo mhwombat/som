@@ -15,6 +15,8 @@ module Data.Datamining.Pattern.Numeric
     boundedFractionalDiff,
     makeRealFracSimilar,
     boundedIntegralDiff,
+    realFloatDiff,
+    makeOrdFractionalSimilar,
     makeIntegralSimilar,
     absDifference,
     minDouble,
@@ -49,6 +51,21 @@ makeRealFracSimilar t r x
   where t' = realToFrac t :: Double
         r' = realToFrac r :: Double
         x' = realToFrac x :: Double
+
+-- TODO: Decide how to handle infinite values
+realFloatDiff :: RealFloat a => a -> a -> a
+realFloatDiff x y = abs (x/2 - y/2) / halfMaxDiff
+  -- divide by two so we don't overflow or underflow
+  where halfMaxDiff = maxVal/2 - minVal/2
+        maxVal = maxNonInfiniteValue 0
+        minVal = minNonInfiniteValue 0
+
+-- TODO: Decide how to handle infinite values
+makeOrdFractionalSimilar :: (Fractional a, Ord a) => a -> a -> a -> a
+makeOrdFractionalSimilar t r x
+  | r < 0     = error "Negative learning rate"
+  | r > 1     = error "Learning rate > 1"
+  | otherwise = x + r*(t - x)
 
 --
 -- Patterns that are integers

@@ -30,8 +30,8 @@ import           Data.Datamining.Clustering.Classifier   (classify,
 import           Data.Datamining.Clustering.DSOMInternal
 import           Data.Datamining.Pattern.List            (euclideanDistanceSquared,
                                                           magnitudeSquared)
-import           Data.Datamining.Pattern.Numeric         (absDifference)
-import           Data.Datamining.Pattern.TestUtils       (makeOrdFractionalSimilar)
+import           Data.Datamining.Pattern.Numeric         (absDifference,
+                                                          makeOrdFractionalSimilar)
 import           Data.List                               (sort)
 import           Math.Geometry.Grid                      (size)
 import           Math.Geometry.Grid.Hexagonal            (HexHexGrid (..))

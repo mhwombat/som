@@ -1,2 +1,5 @@
 :def hoogle \x -> return $ ":! hoogle --count=15 \"" ++ x ++ "\""
 :def doc \x -> return $ ":!hoogle --info \"" ++ x ++ "\""
+import qualified Test.Framework                      as TF
+import qualified Test.QuickCheck.Counterexamples     as QC
+:set -isrc:test

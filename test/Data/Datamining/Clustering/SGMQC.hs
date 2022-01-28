@@ -23,8 +23,8 @@ module Data.Datamining.Clustering.SGMQC
 
 import           Control.DeepSeq                        (deepseq)
 import           Data.Datamining.Clustering.SGMInternal
-import           Data.Datamining.Pattern.Numeric        (absDifference)
-import           Data.Datamining.Pattern.TestUtils      (makeOrdFractionalSimilar)
+import           Data.Datamining.Pattern.Numeric        (absDifference,
+                                                         makeOrdFractionalSimilar)
 import           Data.List                              (minimumBy, (\\))
 import qualified Data.Map.Strict                        as M
 import           Data.Ord                               (comparing)

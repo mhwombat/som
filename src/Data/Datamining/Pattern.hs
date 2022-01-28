@@ -63,7 +63,7 @@ prop_makeSimilar_improves_similarity
   :: (Num a, Ord a, Num b, Ord b, Ord c)
   => (a -> b -> a -> a) -> (a -> a -> c) -> a -> b -> a -> Property
 prop_makeSimilar_improves_similarity makeSimilar diff t r x
-  = r > 0 && t /= x ==> diff t x' < diff t x
+  = r > 0 && r < 1 && t /= x ==> diff t x' < diff t x
   where x' = makeSimilar t r x
 
 prop_makeSimilar_improves_integral_similarity

@@ -15,10 +15,13 @@ module Data.Datamining.Pattern.Numeric
     boundedFractionalDiff,
     makeRealFracSimilar,
     boundedIntegralDiff,
-    realFloatDiff,
+    -- realFloatDiff,
+    doubleDiff,
     makeOrdFractionalSimilar,
     makeIntegralSimilar,
     absDifference,
+    minFloat,
+    maxFloat,
     minDouble,
     maxDouble,
     maxNonInfiniteValue,
@@ -52,13 +55,19 @@ makeRealFracSimilar t r x
         r' = realToFrac r :: Double
         x' = realToFrac x :: Double
 
+-- -- TODO: Decide how to handle infinite values
+-- realFloatDiff :: RealFloat a => a -> a -> a
+-- realFloatDiff x y = abs (x/2 - y/2) / halfMaxDiff
+--   -- divide by two so we don't overflow or underflow
+--   where halfMaxDiff = maxVal/2 - minVal/2
+--         maxVal = maxNonInfiniteValue 0
+--         minVal = minNonInfiniteValue 0
+
 -- TODO: Decide how to handle infinite values
-realFloatDiff :: RealFloat a => a -> a -> a
-realFloatDiff x y = abs (x/2 - y/2) / halfMaxDiff
+doubleDiff :: Double -> Double -> Double
+doubleDiff x y = abs (x/2 - y/2) / halfMaxDiff
   -- divide by two so we don't overflow or underflow
-  where halfMaxDiff = maxVal/2 - minVal/2
-        maxVal = maxNonInfiniteValue 0
-        minVal = minNonInfiniteValue 0
+  where halfMaxDiff = maxDouble/2 - minDouble/2
 
 -- TODO: Decide how to handle infinite values
 makeOrdFractionalSimilar :: (Fractional a, Ord a) => a -> a -> a -> a
@@ -109,6 +118,13 @@ minNonInfiniteValue a = - (maxNonInfiniteValue a)
 -- | Returns the absolute difference between two numbers.
 absDifference :: Num a => a -> a -> a
 absDifference x y = abs (x - y)
+
+
+minFloat :: Float
+minFloat = minNonInfiniteValue 0
+
+maxFloat :: Float
+maxFloat = maxNonInfiniteValue 0
 
 minDouble :: Double
 minDouble = minNonInfiniteValue 0

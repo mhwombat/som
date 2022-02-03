@@ -1,5 +1,8 @@
 # Changelog for som
 
+11.0.2  Switched to Nix flake build.
+        Updated copyright year.
+
 11.0.1  Added Show and Read instances for SOM and SOM-like types.
 
 11.0    Revamped Data.Datamining.Pattern

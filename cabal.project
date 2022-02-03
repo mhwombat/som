@@ -1,1 +1,2 @@
-packages: ../grid/grid.cabal
+packages: ./*.cabal
+optional-packages: ../grid/grid.cabal

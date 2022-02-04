@@ -1,7 +1,3 @@
-# SPDX-FileCopyrightText: 2021 Serokell <https://serokell.io/>
-#
-# SPDX-License-Identifier: CC0-1.0
-
 {
   description = "Self-Organising Maps";
 
@@ -15,12 +11,15 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        haskellPackages = pkgs.haskellPackages;
+        haskellPackages = pkgs.haskellPackages.override {
+           overrides = self: super: rec {
+             grid = self.callCabal2nix "grid" (/home/amy/github/grid) {};
+           };
+        };
 
         jailbreakUnbreak = pkg:
           pkgs.haskell.lib.doJailbreak (pkg.overrideAttrs (_: { meta = { }; }));
 
-        # DON'T FORGET TO PUT YOUR PACKAGE NAME HERE, REMOVING `throw`
         packageName = "som";
       in {
         packages.${packageName} =

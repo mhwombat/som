@@ -13,7 +13,7 @@
 
         haskellPackages = pkgs.haskellPackages.override {
            overrides = self: super: rec {
-             grid = self.callCabal2nix "grid" (/home/amy/github/grid) {};
+             grid = self.callCabal2nix "grid" (../grid) {};
            };
         };
 

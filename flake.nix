@@ -12,7 +12,11 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        haskellPackages = pkgs.haskellPackages;
+        haskellPackages = pkgs.haskellPackages.override {
+           overrides = final: prev: {
+             grid = grid.defaultPackage.${system};
+           };
+        };
 
         jailbreakUnbreak = pkg:
           pkgs.haskell.lib.doJailbreak (pkg.overrideAttrs (_: { meta = { }; }));

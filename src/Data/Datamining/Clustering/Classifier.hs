@@ -18,12 +18,13 @@ module Data.Datamining.Clustering.Classifier
     Classifier(..)
   ) where
 
-import           Data.List (minimumBy)
-import           Data.Ord  (comparing)
+import Data.Kind (Type)
+import Data.List (minimumBy)
+import Data.Ord  (comparing)
 
 -- | A machine which learns to classify input patterns.
 --   Minimal complete definition: @trainBatch@, @reportAndTrain@.
-class Classifier (c :: * -> * -> * -> *) v k p where
+class Classifier (c :: Type -> Type -> Type -> Type) v k p where
   -- | Returns a list of index\/model pairs.
   toList :: c v k p -> [(k, p)]
 

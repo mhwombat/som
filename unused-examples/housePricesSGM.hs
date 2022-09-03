@@ -1,4 +1,7 @@
-{-# LANGUAGE TypeFamilies, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 
 {-
 This program builds a Self-generating Map (SGM) based on some (fake)
@@ -8,9 +11,9 @@ a maximum of 10 clusters. The value associated with each element in
 the set is the model ("typical" price) of the houses in that cluster.
 -}
 
-import Control.Monad (foldM_)
-import Data.Datamining.Clustering.SGM (SGM, exponential, makeSGM)
-import Data.Datamining.Clustering.Classifier (train, toList)
+import Control.Monad                         (foldM_)
+import Data.Datamining.Clustering.Classifier (toList, train)
+import Data.Datamining.Clustering.SGM        (SGM, exponential, makeSGM)
 
 main :: IO ()
 main = do
@@ -31,7 +34,7 @@ trainAndPrint c x = do
 printSGM :: SGM Int Double Int Price -> IO ()
 printSGM c = putStr . show . map pretty . map snd . toList $ c
   where pretty = round :: Double -> Int
-        
+
 type Price = Double
 
 absDifference :: Price -> Price -> Double

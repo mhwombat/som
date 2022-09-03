@@ -1,5 +1,8 @@
 # Changelog for som
 
+11.0.3  Reformatted source code.
+        Switched back to non-Flake build.
+
 11.0.2  Switched to Nix flake build.
         Updated copyright year.
 

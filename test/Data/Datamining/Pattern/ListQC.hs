@@ -16,15 +16,15 @@ module Data.Datamining.Pattern.ListQC
     UnitInterval(FromDouble),
   ) where
 
-import qualified Data.Datamining.Pattern.List         as L
-import           Data.Datamining.Pattern.Numeric      (doubleDiff,
-                                                       makeOrdFractionalSimilar,
-                                                       maxDouble, minDouble)
-import           Data.Datamining.Pattern.NumericQC    (UnitInterval (FromDouble))
-import qualified Numeric.ApproxEq                     as Q
-import           Test.Framework                       (Test, testGroup)
-import           Test.Framework.Providers.QuickCheck2 (testProperty)
-import           Test.QuickCheck
+import Data.Datamining.Pattern.List         qualified as L
+import Data.Datamining.Pattern.Numeric      (doubleDiff,
+                                             makeOrdFractionalSimilar,
+                                             maxDouble, minDouble)
+import Data.Datamining.Pattern.NumericQC    (UnitInterval (FromDouble))
+import Numeric.ApproxEq                     qualified as Q
+import Test.Framework                       (Test, testGroup)
+import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Test.QuickCheck
 
 data TestWeights = TestWeights [Double] deriving Show
 

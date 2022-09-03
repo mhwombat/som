@@ -32,4 +32,4 @@ module Data.Datamining.Clustering.DSOM
     trainNeighbourhood
   ) where
 
-import           Data.Datamining.Clustering.DSOMInternal
+import Data.Datamining.Clustering.DSOMInternal

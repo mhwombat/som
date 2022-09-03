@@ -1,35 +1,41 @@
-{-# LANGUAGE TypeFamilies, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 
 {-
 
 This program builds a Self-Organising Map (SOM) based on EU mortality
-rates for 2011. As the SOM learns the rates in the image, it builds a 
+rates for 2011. As the SOM learns the rates in the image, it builds a
 map of the data. The map here is a rectangular grid with 3
-tiles in it, so it divides the values into 3 clusters. The value 
+tiles in it, so it divides the values into 3 clusters. The value
 associated with each tile is the model (i.e., the "typical" death rate)
 for that cluster.
 -}
 
-import Codec.Image.DevIL (ilInit, readImage)
-import Control.Monad (foldM_, forM_, unless, replicateM)
-import Control.Monad.Random (evalRandIO, Rand, RandomGen, getRandomR)
-import Data.Datamining.Pattern (adjustVector,
-  euclideanDistanceSquared, Pattern(..))
-import Data.Datamining.Clustering.SOM (SOM(..), defaultSOM, toGridMap)
+import Codec.Image.DevIL                     (ilInit, readImage)
+import Control.Monad                         (foldM_, forM_, replicateM, unless)
+import Control.Monad.Random                  (Rand, RandomGen, evalRandIO,
+                                              getRandomR)
+import Data.Array.IArray                     (elems)
+import Data.Array.ST                         (runSTArray)
+import Data.Array.Unboxed                    (UArray)
 import Data.Datamining.Clustering.Classifier (Classifier, train, trainBatch)
-import Data.List (foldl')
-import Data.Word (Word8)
-import Data.Array.IArray (elems)
-import Data.Array.Unboxed (UArray)
-import Data.Array.ST (runSTArray)
-import GHC.Arr (listArray, readSTArray, thawSTArray, writeSTArray)
-import Math.Geometry.Grid (Index, tileCount)
-import Math.Geometry.Grid.Square (RectSquareGrid, rectSquareGrid)
-import qualified Math.Geometry.GridMap as GM (GridMap, BaseGrid, elems,
-  map, toList)
-import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
-import Numeric (showHex)
-import System.Directory (doesFileExist)
+import Data.Datamining.Clustering.SOM        (SOM (..), defaultSOM, toGridMap)
+import Data.Datamining.Pattern               (Pattern (..), adjustVector,
+                                              euclideanDistanceSquared)
+import Data.List                             (foldl')
+import Data.Word                             (Word8)
+import GHC.Arr                               (listArray, readSTArray,
+                                              thawSTArray, writeSTArray)
+import Math.Geometry.Grid                    (Index, tileCount)
+import Math.Geometry.Grid.Square             (RectSquareGrid, rectSquareGrid)
+import Math.Geometry.GridMap                 qualified as GM (BaseGrid, GridMap,
+                                                              elems, map,
+                                                              toList)
+import Math.Geometry.GridMap.Lazy            (LGridMap, lazyGridMap)
+import Numeric                               (showHex)
+import System.Directory                      (doesFileExist)
 
 
 main :: IO ()

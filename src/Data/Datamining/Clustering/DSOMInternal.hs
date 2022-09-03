@@ -22,16 +22,16 @@
 
 module Data.Datamining.Clustering.DSOMInternal where
 
-import           Control.DeepSeq                       (NFData)
-import           Data.Datamining.Clustering.Classifier (Classifier (..))
-import qualified Data.Foldable                         as F (Foldable, foldr)
-import           Data.List                             (foldl', minimumBy)
-import           Data.Ord                              (comparing)
-import           GHC.Generics                          (Generic)
-import qualified Math.Geometry.Grid                    as G (FiniteGrid (..),
+import Control.DeepSeq                       (NFData)
+import Data.Datamining.Clustering.Classifier (Classifier (..))
+import Data.Foldable                         qualified as F (Foldable, foldr)
+import Data.List                             (foldl', minimumBy)
+import Data.Ord                              (comparing)
+import GHC.Generics                          (Generic)
+import Math.Geometry.Grid                    qualified as G (FiniteGrid (..),
                                                              Grid (..))
-import qualified Math.Geometry.GridMap                 as GM (GridMap (..))
-import           Prelude                               hiding (lookup)
+import Math.Geometry.GridMap                 qualified as GM (GridMap (..))
+import Prelude                               hiding (lookup)
 
 -- | A Self-Organising Map (DSOM).
 --

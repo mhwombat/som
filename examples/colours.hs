@@ -1,8 +1,8 @@
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TypeFamilies              #-}
 
 {-
 
@@ -12,41 +12,44 @@ colour distribution of the image. The map here is a hexagonal grid with 7
 tiles in it, so it divides the colours into 7 clusters. The value associated
 with each tile is the RGB value of the colour for that cluster.
 
-The picture at <https://github.com/mhwombat/som/blob/master/examples/somTutorial.png?raw=true> 
+The picture at <https://github.com/mhwombat/som/blob/master/examples/somTutorial.png?raw=true>
 will make this clearer.
 -}
 
-import Control.Monad (forM_, unless, replicateM)
-import Control.Monad.Random (evalRandIO, Rand, RandomGen, getRandomRs)
-import Data.Datamining.Pattern (adjustVector, 
-  euclideanDistanceSquared)
-import Data.Datamining.Clustering.SOM (SOM(..), toGridMap, decayingGaussian)
+import Control.Monad                         (forM_, replicateM, unless)
+import Control.Monad.Random                  (Rand, RandomGen, evalRandIO,
+                                              getRandomRs)
+import Data.Array.IArray                     (elems)
+import Data.Array.ST                         (runSTArray)
+import Data.Array.Unboxed                    (UArray)
 import Data.Datamining.Clustering.Classifier (Classifier, train, trainBatch)
-import Data.List (foldl')
-import Data.List.Split (chunksOf)
-import Data.Word (Word8)
-import Data.Array.IArray (elems)
-import Data.Array.Unboxed (UArray)
-import Data.Array.ST (runSTArray)
-import GHC.Arr (listArray, readSTArray, thawSTArray, writeSTArray)
-import Math.Geometry.Grid (Index)
-import Math.Geometry.Grid.Hexagonal (HexHexGrid, hexHexGrid)
-import qualified Math.Geometry.GridMap as GM (GridMap, BaseGrid, map,
-  toList)
-import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
-import Numeric (showHex)
-import System.Directory (doesFileExist)
+import Data.Datamining.Clustering.SOM        (SOM (..), decayingGaussian,
+                                              toGridMap)
+import Data.Datamining.Pattern               (adjustVector,
+                                              euclideanDistanceSquared)
+import Data.List                             (foldl')
+import Data.List.Split                       (chunksOf)
+import Data.Word                             (Word8)
+import GHC.Arr                               (listArray, readSTArray,
+                                              thawSTArray, writeSTArray)
+import Math.Geometry.Grid                    (Index)
+import Math.Geometry.Grid.Hexagonal          (HexHexGrid, hexHexGrid)
+import Math.Geometry.GridMap                 qualified as GM (BaseGrid, GridMap,
+                                                              map, toList)
+import Math.Geometry.GridMap.Lazy            (LGridMap, lazyGridMap)
+import Numeric                               (showHex)
+import System.Directory                      (doesFileExist)
 
 -- These imports are for the graphics
-import Codec.Picture (readImage, DynamicImage(ImageRGBA8), PixelRGBA8,
-  imageData)
-import Data.Colour.SRGB (sRGB)
-import Data.Vector.Storable (toList)
+import Codec.Picture                         (DynamicImage (ImageRGBA8),
+                                              PixelRGBA8, imageData, readImage)
+import Data.ByteString.Lazy                  qualified as BS
+import Data.Colour.SRGB                      (sRGB)
+import Data.Vector.Storable                  (toList)
+import Diagrams.Backend.Cairo                (B, Cairo, renderCairo)
+import Diagrams.Core                         (V)
 import Diagrams.Prelude
-import Diagrams.Core (V)
-import Diagrams.Backend.Cairo (B, Cairo, renderCairo) -- from diagrams-cairo
-import qualified Data.ByteString.Lazy as BS
-import Diagrams.TwoD.Text (Text) -- from diagrams-lib
+import Diagrams.TwoD.Text                    (Text)
 
 inputFile :: FilePath
 inputFile = "Sample.png"
@@ -101,17 +104,17 @@ shuffle xs = do
   let l = length xs
   rands <- take l `fmap` getRandomRs (0, l-1)
   let ar = runSTArray $ do
-      ar' <- thawSTArray $ listArray (0, l-1) xs
-      forM_ (zip [0..(l-1)] rands) $ \(i, j) -> do
-          vi <- readSTArray ar' i
-          vj <- readSTArray ar' j
-          writeSTArray ar' j vi
-          writeSTArray ar' i vj
-      return ar'
+             ar' <- thawSTArray $ listArray (0, l-1) xs
+             forM_ (zip [0..(l-1)] rands) $ \(i, j) -> do
+                 vi <- readSTArray ar' i
+                 vj <- readSTArray ar' j
+                 writeSTArray ar' j vi
+                 writeSTArray ar' i vj
+             return ar'
   return (elems ar)
 
--- We use Doubles instead of Word8s to represent the red, green, blue and 
--- alpha components of a pixel because we're going to multiply them by 
+-- We use Doubles instead of Word8s to represent the red, green, blue and
+-- alpha components of a pixel because we're going to multiply them by
 -- fractions.
 type Pixel = [Double]
 
@@ -125,7 +128,7 @@ emptyPattern = do
 --
 -- The code below converts the image data into a sequence of vectors. There's
 -- a vector for each pixel in the image. Each vector represents one pixel,
--- and consists of three numbers between 0 and 255, for the red, green, 
+-- and consists of three numbers between 0 and 255, for the red, green,
 -- and blue components of that pixel. (We're skipping the alpha component.)
 --
 
@@ -153,7 +156,7 @@ sizeSpec = Dims 400.0 400.0
 --   :: (Renderable Text b, Renderable (Path R2) b, Backend b R2,
 --     Num (Measure R2), Fractional (Measure R2))
 --       => ((Int, Int), Pixel) -> Diagram b R2
-drawHexagon (index, rgb@(r:g:b:_)) = 
+drawHexagon (index, rgb@(r:g:b:_)) =
   mconcat [ label, hexagon 20 # lw 0.02 # fc colour # rotateBy (1/4) ]
   where label = (text (show index) # fc white # fontSize 5 ||| strutY 5)
                 ===

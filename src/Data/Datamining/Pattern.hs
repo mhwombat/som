@@ -23,7 +23,7 @@ module Data.Datamining.Pattern
     prop_makeSimilar_improves_integral_similarity
   ) where
 
-import           Test.QuickCheck (Property, (==>))
+import Test.QuickCheck (Property, (==>))
 
 --
 -- Utilities for testing functions that measure the difference

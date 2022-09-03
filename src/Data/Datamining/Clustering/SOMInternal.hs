@@ -22,16 +22,16 @@
 
 module Data.Datamining.Clustering.SOMInternal where
 
-import           Prelude                               hiding (lookup)
+import Prelude                               hiding (lookup)
 
-import           Control.DeepSeq                       (NFData)
-import           Data.Datamining.Clustering.Classifier (Classifier (..))
-import qualified Data.Foldable                         as F (Foldable, foldr)
-import           Data.List                             (foldl', minimumBy)
-import           Data.Ord                              (comparing)
-import           GHC.Generics                          (Generic)
-import qualified Math.Geometry.Grid                    as G (Grid (..))
-import qualified Math.Geometry.GridMap                 as GM (GridMap (..))
+import Control.DeepSeq                       (NFData)
+import Data.Datamining.Clustering.Classifier (Classifier (..))
+import Data.Foldable                         qualified as F (Foldable, foldr)
+import Data.List                             (foldl', minimumBy)
+import Data.Ord                              (comparing)
+import GHC.Generics                          (Generic)
+import Math.Geometry.Grid                    qualified as G (Grid (..))
+import Math.Geometry.GridMap                 qualified as GM (GridMap (..))
 
 -- | A typical learning function for classifiers.
 --   @'decayingGaussian' r0 rf w0 wf tf@ returns a bell curve-shaped

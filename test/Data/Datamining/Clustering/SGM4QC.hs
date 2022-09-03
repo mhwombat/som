@@ -23,24 +23,22 @@ module Data.Datamining.Clustering.SGM4QC
     test
   ) where
 
-import           Control.DeepSeq                         (NFData, deepseq)
-import           Data.Datamining.Clustering.SGM4Internal
-import           Data.Datamining.Pattern.Numeric         (absDifference,
-                                                          makeOrdFractionalSimilar)
-import           Data.List                               (minimumBy)
-import qualified Data.Map.Strict                         as M
-import           Data.Ord                                (comparing)
-import           Data.Word                               (Word16)
-import           GHC.Generics                            (Generic)
-import           System.Random                           (Random)
-import           Test.Framework                          as TF (Test, testGroup)
-import           Test.Framework.Providers.QuickCheck2    (testProperty)
-import           Test.QuickCheck                         (Arbitrary, Gen,
-                                                          Positive, Property,
-                                                          arbitrary, choose,
-                                                          getPositive, shrink,
-                                                          sized, suchThat,
-                                                          vectorOf, (==>))
+import Control.DeepSeq                         (NFData, deepseq)
+import Data.Datamining.Clustering.SGM4Internal
+import Data.Datamining.Pattern.Numeric         (absDifference,
+                                                makeOrdFractionalSimilar)
+import Data.List                               (minimumBy)
+import Data.Map.Strict                         qualified as M
+import Data.Ord                                (comparing)
+import Data.Word                               (Word16)
+import GHC.Generics                            (Generic)
+import System.Random                           (Random)
+import Test.Framework                          as TF (Test, testGroup)
+import Test.Framework.Providers.QuickCheck2    (testProperty)
+import Test.QuickCheck                         (Arbitrary, Gen, Positive,
+                                                Property, arbitrary, choose,
+                                                getPositive, shrink, sized,
+                                                suchThat, vectorOf, (==>))
 
 newtype UnitInterval a = UnitInterval {getUnitInterval :: a}
  deriving ( Eq, Ord, Show, Read)

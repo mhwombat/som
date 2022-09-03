@@ -21,30 +21,26 @@ module Data.Datamining.Clustering.SOMQC
     test
   ) where
 
-import           Data.Datamining.Clustering.Classifier  (classify,
-                                                         classifyAndTrain,
-                                                         diffAndTrain,
-                                                         differences, models,
-                                                         numModels,
-                                                         reportAndTrain, train,
-                                                         trainBatch)
-import           Data.Datamining.Clustering.SOMInternal
-import qualified Data.Datamining.Pattern.List           as L
-import           Data.Datamining.Pattern.Numeric        (absDifference,
-                                                         makeOrdFractionalSimilar)
-import           Data.List                              (sort)
-import           Math.Geometry.Grid                     (size)
-import           Math.Geometry.Grid.Hexagonal           (HexHexGrid (..))
-import           Math.Geometry.GridMap                  (elems, (!))
-import           Math.Geometry.GridMap.Lazy             (LGridMap, lazyGridMap)
-import           System.Random                          (Random)
-import           Test.Framework                         as TF (Test, testGroup)
-import           Test.Framework.Providers.QuickCheck2   (testProperty)
-import           Test.QuickCheck                        (Arbitrary, Gen,
-                                                         Property, arbitrary,
-                                                         choose, sized,
-                                                         suchThat, vectorOf,
-                                                         (==>))
+import Data.Datamining.Clustering.Classifier  (classify, classifyAndTrain,
+                                               diffAndTrain, differences,
+                                               models, numModels,
+                                               reportAndTrain, train,
+                                               trainBatch)
+import Data.Datamining.Clustering.SOMInternal
+import Data.Datamining.Pattern.List           qualified as L
+import Data.Datamining.Pattern.Numeric        (absDifference,
+                                               makeOrdFractionalSimilar)
+import Data.List                              (sort)
+import Math.Geometry.Grid                     (size)
+import Math.Geometry.Grid.Hexagonal           (HexHexGrid (..))
+import Math.Geometry.GridMap                  (elems, (!))
+import Math.Geometry.GridMap.Lazy             (LGridMap, lazyGridMap)
+import System.Random                          (Random)
+import Test.Framework                         as TF (Test, testGroup)
+import Test.Framework.Providers.QuickCheck2   (testProperty)
+import Test.QuickCheck                        (Arbitrary, Gen, Property,
+                                               arbitrary, choose, sized,
+                                               suchThat, vectorOf, (==>))
 
 positive :: (Num a, Ord a, Arbitrary a) => Gen a
 positive = arbitrary `suchThat` (> 0)

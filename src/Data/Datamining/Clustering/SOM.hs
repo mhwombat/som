@@ -50,5 +50,5 @@ module Data.Datamining.Clustering.SOM
     trainNeighbourhood
   ) where
 
-import           Data.Datamining.Clustering.SOMInternal
+import Data.Datamining.Clustering.SOMInternal
 

@@ -17,13 +17,13 @@ module Data.Datamining.Pattern.NumericQC
     UnitInterval(FromDouble)
   ) where
 
-import           Data.Datamining.Pattern
-import           Data.Datamining.Pattern.Numeric
-import           Data.Word                            (Word8)
-import           System.Random                        (Random)
-import           Test.Framework                       (Test, testGroup)
-import           Test.Framework.Providers.QuickCheck2 (testProperty)
-import           Test.QuickCheck.Counterexamples
+import Data.Datamining.Pattern
+import Data.Datamining.Pattern.Numeric
+import Data.Word                            (Word8)
+import System.Random                        (Random)
+import Test.Framework                       (Test, testGroup)
+import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Test.QuickCheck.Counterexamples
 
 newtype UnitInterval = FromDouble Double
   deriving (Read, Show, Eq, Num, Real, Fractional, RealFrac, Ord)

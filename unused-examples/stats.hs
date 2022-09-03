@@ -1,19 +1,23 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
-import Data.Datamining.Clustering.SOM (adjustVector, euclideanDistanceSquared,
-  normalise, Pattern(..), trainBatch)
-import Data.Ix (Ix)
-import Codec.Image.DevIL (ilInit, readImage, writeImage)
-import Control.Monad (forM_)
-import Control.Monad.Random (evalRandIO, Rand, RandomGen, getRandomRs)
-import Data.List (foldl')
-import Data.Word (Word8)
-import Data.Array.IArray (elems)
-import Data.Array.Unboxed (UArray)
-import Data.Array.ST (runSTArray)
-import GHC.Arr (listArray, readSTArray, thawSTArray, writeSTArray)
-import Math.Geometry.Grid (Grid, HexHexGrid, hexHexGrid)
-import qualified Math.Geometry.GridMap as GM (lazyGridMap, map, GridMap, elems)
+import Codec.Image.DevIL              (ilInit, readImage, writeImage)
+import Control.Monad                  (forM_)
+import Control.Monad.Random           (Rand, RandomGen, evalRandIO, getRandomRs)
+import Data.Array.IArray              (elems)
+import Data.Array.ST                  (runSTArray)
+import Data.Array.Unboxed             (UArray)
+import Data.Datamining.Clustering.SOM (Pattern (..), adjustVector,
+                                       euclideanDistanceSquared, normalise,
+                                       trainBatch)
+import Data.Ix                        (Ix)
+import Data.List                      (foldl')
+import Data.Word                      (Word8)
+import GHC.Arr                        (listArray, readSTArray, thawSTArray,
+                                       writeSTArray)
+import Math.Geometry.Grid             (Grid, HexHexGrid, hexHexGrid)
+import Math.Geometry.GridMap          qualified as GM (GridMap, elems,
+                                                       lazyGridMap, map)
 
 main = do
   -- Train it with the vectors from the image.
@@ -22,7 +26,7 @@ main = do
   let c3 = GM.map (map round) c2
   print c3
 
--- This function calculates the learning rate to apply to a node based on its 
+-- This function calculates the learning rate to apply to a node based on its
 -- distance from the node that best matches the input. In this example, we
 -- will only adjust the best node.
 learningRate :: Int -> Double
@@ -36,23 +40,23 @@ buildSOM = do
   return $ GM.lazyGridMap (hexHexGrid 2) ps
 
 data Country = Country {
-  name :: String,
+  name                  :: String,
   medianAgeOfPopulation :: Double,
-  childDependencyRatio :: Double,
+  childDependencyRatio  :: Double,
   oldAgeDependencyRatio :: Double,
-  totalDependencyRatio :: Double,
-  lifeExpectancyAt75 :: Double,
-  adultSurvival :: Double,
-
-
+  totalDependencyRatio  :: Double,
+  lifeExpectancyAt75    :: Double,
+  adultSurvival         :: Double
  }
+
+{-
 Country / Areas (1),
 Median Age of the Population (2),
 Child Dependency Ratio (3),
 Old Age Dependency Ratio (4),Total Dependency Ratio (5),Life Expectancy at Age 75 (6),"Adult
-Survival 
+Survival
 (7)",Scaled Median Age of the Population (2),Scaled Child Dependency Ratio (3),Scaled Old Age Dependency Ratio (4),Scaled Total Dependency Ratio (5),Scaled Life Expectancy at Age 75 (6),"Scaled Adult
-Survival 
+Survival
 (7)"
 Afghanistan,16.6,143,6,149,6.6,926,0.0376712329,0.9037037037,0.1351351351,0.9,0.2526315789,0.9707401033
 Albania,30,54,16,70,9.7,926,0.4965753425,0.2444444444,0.4054054054,0.3357142857,0.5789473684,0.9707401033
@@ -251,3 +255,4 @@ Yemen,17.4,136,6,142,7.6,778,0.0650684932,0.8518518519,0.1351351351,0.85,0.35789
 Zambia,16.7,143,8,151,7.5,498,0.0410958904,0.9037037037,0.1891891892,0.9142857143,0.3473684211,0.2340791738
 Zimbabwe,19.3,118,10,127,8.5,362,0.1301369863,0.7185185185,0.2432432432,0.7428571429,0.4526315789,0
 
+-}

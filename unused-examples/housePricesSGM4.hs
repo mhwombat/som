@@ -11,11 +11,11 @@ a maximum of 10 clusters. The value associated with each element in
 the set is the model ("typical" price) of the houses in that cluster.
 -}
 
-import           Control.Monad                   (foldM_)
-import           Data.Datamining.Clustering.SGM4
-    (SGM, exponential, makeSGM, modelMap, train)
-import           Data.Map.Lazy                   (toList)
-import           Data.Word                       (Word8)
+import Control.Monad                   (foldM_)
+import Data.Datamining.Clustering.SGM4 (SGM, exponential, makeSGM, modelMap,
+                                        train)
+import Data.Map.Lazy                   (toList)
+import Data.Word                       (Word8)
 
 main :: IO ()
 main = do

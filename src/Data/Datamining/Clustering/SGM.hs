@@ -68,5 +68,5 @@ module Data.Datamining.Clustering.SGM
     trainBatch
   ) where
 
-import           Data.Datamining.Clustering.SGMInternal
+import Data.Datamining.Clustering.SGMInternal
 

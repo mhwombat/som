@@ -22,13 +22,13 @@
 
 module Data.Datamining.Clustering.SGMInternal where
 
-import           Prelude         hiding (lookup)
+import Prelude         hiding (lookup)
 
-import           Control.DeepSeq (NFData)
-import           Data.List       (foldl', minimumBy)
-import qualified Data.Map.Strict as M
-import           Data.Ord        (comparing)
-import           GHC.Generics    (Generic)
+import Control.DeepSeq (NFData)
+import Data.List       (foldl', minimumBy)
+import Data.Map.Strict qualified as M
+import Data.Ord        (comparing)
+import GHC.Generics    (Generic)
 
 -- | A typical learning function for classifiers.
 --   @'exponential' r0 d t@ returns the learning rate at time @t@.

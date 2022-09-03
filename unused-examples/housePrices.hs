@@ -1,4 +1,7 @@
-{-# LANGUAGE TypeFamilies, FlexibleInstances, FlexibleContexts, MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies          #-}
 
 {-
 
@@ -9,25 +12,29 @@ the prices into 4 clusters. The value associated with each tile is the
 model ("typical" price) of the houses in that cluster.
 -}
 
-import Control.Monad (foldM_, forM_, unless, replicateM)
-import Control.Monad.Random (evalRandIO, Rand, RandomGen, getRandomR)
-import Data.Datamining.Pattern (adjustVector,
-  euclideanDistanceSquared)
-import Data.Datamining.Clustering.SOM (SOM(..), toGridMap, decayingGaussian)
+import Control.Monad                         (foldM_, forM_, replicateM, unless)
+import Control.Monad.Random                  (Rand, RandomGen, evalRandIO,
+                                              getRandomR)
+import Data.Array.IArray                     (elems)
+import Data.Array.ST                         (runSTArray)
+import Data.Array.Unboxed                    (UArray)
 import Data.Datamining.Clustering.Classifier (Classifier, train, trainBatch)
-import Data.List (foldl')
-import Data.Word (Word8)
-import Data.Array.IArray (elems)
-import Data.Array.Unboxed (UArray)
-import Data.Array.ST (runSTArray)
-import GHC.Arr (listArray, readSTArray, thawSTArray, writeSTArray)
-import Math.Geometry.Grid (Index, tileCount)
-import Math.Geometry.Grid.Square (RectSquareGrid, rectSquareGrid)
-import qualified Math.Geometry.GridMap as GM (GridMap, BaseGrid, elems,
-  map, toList)
-import Math.Geometry.GridMap.Lazy (LGridMap, lazyGridMap)
-import Numeric (showHex)
-import System.Directory (doesFileExist)
+import Data.Datamining.Clustering.SOM        (SOM (..), decayingGaussian,
+                                              toGridMap)
+import Data.Datamining.Pattern               (adjustVector,
+                                              euclideanDistanceSquared)
+import Data.List                             (foldl')
+import Data.Word                             (Word8)
+import GHC.Arr                               (listArray, readSTArray,
+                                              thawSTArray, writeSTArray)
+import Math.Geometry.Grid                    (Index, tileCount)
+import Math.Geometry.Grid.Square             (RectSquareGrid, rectSquareGrid)
+import Math.Geometry.GridMap                 qualified as GM (BaseGrid, GridMap,
+                                                              elems, map,
+                                                              toList)
+import Math.Geometry.GridMap.Lazy            (LGridMap, lazyGridMap)
+import Numeric                               (showHex)
+import System.Directory                      (doesFileExist)
 
 
 main :: IO ()

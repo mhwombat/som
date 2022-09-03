@@ -80,6 +80,6 @@ module Data.Datamining.Clustering.SGM4
     filter
   ) where
 
-import           Data.Datamining.Clustering.SGM4Internal
-import           Prelude                                 hiding (filter)
+import Data.Datamining.Clustering.SGM4Internal
+import Prelude                                 hiding (filter)
 
